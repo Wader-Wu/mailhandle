@@ -1,0 +1,4 @@
+interface:
+  display_name: "Mailhandle"
+  short_description: "Read Outlook mail and summarize it into prioritized todos"
+  default_prompt: "Use this skill to read local Outlook mail through the mailhandle bridge, filter mail by sender/subject/date/unread state, and summarize the results into prioritized todos."

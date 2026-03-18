@@ -1,0 +1,27 @@
+# Local runtime artifacts
+.cache/
+records/
+sessions/
+tmp/
+log/
+.sandbox/
+.sandbox-bin/
+
+# Python bytecode and caches
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Local state and auth
+auth.json
+history.jsonl
+models_cache.json
+state_*.sqlite
+state_*.sqlite-shm
+state_*.sqlite-wal
+
+# Local environment files
+.env
+scripts/.env
+scripts/.env.local

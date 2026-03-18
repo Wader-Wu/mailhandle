@@ -1,0 +1,63 @@
+{
+  "default_priority": "low",
+  "suppress_low_priority_notifications": true,
+  "collapse_similar_emails": true,
+  "boost_owner_attention": false,
+  "owner_aliases": ["wader"],
+  "manager_senders": ["Bin Tan <Bin.Tan@lumentum.com>"],
+  "greeting_terms": ["hi", "hello", "dear", "good morning", "good afternoon", "good evening"],
+  "rules": [
+    {
+      "name": "Direct Greeting In To",
+      "priority": "high",
+      "attention_flags_any": ["owner_greeted"]
+    },
+    {
+      "name": "Owner Mentioned With At",
+      "priority": "high",
+      "attention_flags_any": ["owner_tagged"]
+    },
+    {
+      "name": "Manager Sender",
+      "priority": "high",
+      "sender_matches_manager": true
+    },
+    {
+      "name": "Agile Approval Request",
+      "priority": "high",
+      "sender_contains_any": ["agile"],
+      "body_contains_any": ["need your approval", "your approval", "approval required", "please approve"]
+    },
+    {
+      "name": "Owner In To",
+      "priority": "medium",
+      "attention_flags_any": ["owner_in_to"]
+    },
+    {
+      "name": "Owner In Cc",
+      "priority": "low",
+      "attention_flags_any": ["owner_in_cc"]
+    },
+    {
+      "name": "Urgent Subject",
+      "priority": "high",
+      "subject_contains_any": ["urgent", "asap", "action required", "immediately"]
+    },
+    {
+      "name": "High Importance",
+      "priority": "high",
+      "importance": ["high"]
+    },
+    {
+      "name": "Zhuque Work",
+      "priority": "high",
+      "subject_contains_any": ["zhuque"]
+    },
+    {
+      "name": "Notifications Low",
+      "priority": "low",
+      "sender_contains_any": ["noreply", "notification", "updates.miro.com"],
+      "subject_contains_any": ["notification", "newsletter", "digest"]
+    }
+  ]
+}
