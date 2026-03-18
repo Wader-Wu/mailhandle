@@ -54,7 +54,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--project")
     parser.add_argument(
         "--date-preset",
-        choices=["today", "yesterday", "last_7_days", "this_month", "last_month"],
+        choices=["today", "yesterday", "last_2days", "last_7_days", "this_month", "last_month"],
     )
     parser.add_argument("--since")
     parser.add_argument("--until")
@@ -285,6 +285,10 @@ def get_recipient_match_keys(message: dict) -> set[str]:
 
 def get_message_thread_key(message: dict) -> str:
     return normalize_subject(message.get("conversation_topic") or message.get("subject", ""))
+
+
+def get_subject_key(subject: str) -> str:
+    return normalize_subject(subject)
 
 
 def get_sent_lookup_window(mail_payload: dict) -> tuple[str | None, str | None]:
@@ -906,6 +910,7 @@ def build_todo(
 ) -> dict:
     sender = message.get("sender", {})
     title = message.get("subject", "<no subject>")
+    conversation_topic = message.get("conversation_topic", "") or ""
     attention_flags = message.get("_attention_flags") or get_attention_flags_with_rules(
         message, owner, rules_config
     )
@@ -921,10 +926,14 @@ def build_todo(
 
     todo = {
         "title": title,
+        "subject_key": get_subject_key(title),
+        "conversation_topic": conversation_topic,
+        "thread_key": get_message_thread_key(message),
         "priority": priority,
         "next_action": infer_next_action(message, priority),
         "reason": ", ".join(reasons),
         "email_id": message.get("id", ""),
+        "store_id": message.get("store_id", ""),
         "from": get_sender_display_name(message),
         "received": message.get("received", {}).get("iso", ""),
         "abstract": abstract,

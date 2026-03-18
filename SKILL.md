@@ -1,6 +1,6 @@
 ---
 name: mailhandle
-description: Read Outlook mail from Codex CLI on native Windows, filter messages by sender/subject/date/unread state, and summarize matching mail into prioritized todos using the runtime code under `scripts/` plus editable rules in `scripts/priority_rules.json`.
+description: Read Outlook mail from Codex CLI on native Windows, sync it into a local SQLite database, review it in a browser workspace, and tune priority behavior with editable JSON rules.
 ---
 
 # Mailhandle
@@ -8,89 +8,82 @@ description: Read Outlook mail from Codex CLI on native Windows, filter messages
 ## Use When
 
 - The user wants recent Outlook mail from their own desktop mailbox.
-- The user asks for filtered reading like unread mail, yesterday's mail, this month's project mail, or sender/subject search.
-- The user wants a todo list or prioritized summary from matching mail.
-- The user wants a readable static HTML review report for personal follow-up.
+- The user wants a local browser workspace for reviewing mail history and status.
+- The user wants priority filtering, grouped threads, Outlook open actions, or reply drafting.
+- The user wants to tune matching behavior in `priority_rules.json`.
 
 ## Workflow
 
-1. Default to Codex CLI usage and use the bundled wrapper script `scripts/run_summary.py`.
-2. Pass only the filters needed:
-   - `--unread-only`
-   - `--date-preset today|yesterday|last_7_days|this_month|last_month`
-   - `--from-contains`
-   - `--subject-contains`
-   - `--project`
-   - `--since YYYY-MM-DD`
-   - `--until YYYY-MM-DD`
-   - `--limit N`
-   - `--include-body` only when the body is really needed
-   - `--include-notifications` only when notification-style mail should stay visible
-   - `--no-collapse` only when every matching mail should remain separate
-   - `--verbose` only when the full raw nested message object is needed
-3. Prefer `--json` for downstream handling.
-4. Runtime code and runtime config live under `scripts/`.
-5. `scripts/run_summary.py` now always generates a static HTML review page, tries to open it on Windows, and uses Codex CLI to build mail-body abstracts when available.
-6. Use `scripts/run_review_report.py` when the user explicitly wants the HTML report flow by itself.
-7. If the user asks to update priority rules, prefer `scripts/run_priority_rules_editor.py` so the JSON file opens in a browser editor and saves back directly.
+1. Default to Codex CLI usage and treat `$mailhandle start` as the canonical prompt.
+2. Accept `$mailhandle run`, `$mailhandle launch`, `mailhandle start`, `mailhandle run`, and `mailhandle launch` as equivalent requests.
+3. For those prompts, do not inspect unrelated project files first.
+4. Start the workspace immediately with the PowerShell-native command `& "$env:USERPROFILE\.codex\skills\mailhandle\scripts\launch_mailhandle.ps1"`.
+5. Report the launcher output directly. `launch_mailhandle.ps1` waits for the startup summary and prints the workspace URL or current status itself.
+6. If needed, the same status is also written to `%USERPROFILE%\.codex\skills\mailhandle\tmp\mailhandle-last-start.txt`.
+7. Do not run `python scripts/run_mail_database.py` directly from Codex for normal startup.
+8. The launcher requests browser auto-open and also prints the local URL. If the browser does not appear, tell the user to open the reported URL manually.
+9. The page provides:
+   - mailbox history from SQLite
+   - time-range filters such as `today`, `last_2days`, and `last_7_days`
+   - priority and status filters
+   - inline `status` editing
+   - an `Open` action for a specific Outlook item
+   - thread-level response drafting that opens `Reply All` in Outlook
+   - an embedded priority-rules editor
+10. If the user asks to update priority rules, use the embedded editor in the workspace.
 
 ## Commands
 
-Default structured summary from Codex:
+Database workspace:
 ```bash
-python3 skills/mailhandle/scripts/run_summary.py --json
+& "$env:USERPROFILE\.codex\skills\mailhandle\scripts\launch_mailhandle.ps1"
 ```
 
-This command also saves a timestamped HTML review report and opens it when possible.
-
-For native Windows/Codex sessions, `python skills/mailhandle/scripts/run_summary.py --json`
-is the expected local debug command when direct script execution is needed.
-
-Unread mail today:
-```bash
-python3 skills/mailhandle/scripts/run_summary.py --unread-only --date-preset today --json
+Manual `cmd.exe` launch:
+```bat
+powershell -NoProfile -ExecutionPolicy Bypass -File "%USERPROFILE%\.codex\skills\mailhandle\scripts\launch_mailhandle.ps1"
 ```
 
-Yesterday's mail:
-```bash
-python3 skills/mailhandle/scripts/run_summary.py --date-preset yesterday --json
-```
-
-Project-specific mail:
-```bash
-python3 skills/mailhandle/scripts/run_summary.py --project zhuque --date-preset this_month --json
-```
-
-Static HTML review report:
-```bash
-python3 skills/mailhandle/scripts/run_review_report.py --date-preset today
-```
-
-Priority rules editor:
-```bash
-python3 skills/mailhandle/scripts/run_priority_rules_editor.py
+Prompt forms:
+```text
+$mailhandle start
+$mailhandle run
+$mailhandle launch
 ```
 
 ## Rules
 
 - This skill depends on local classic Outlook on Windows and Windows Python configured in `scripts/.env` for installed/runtime use.
-- Run through the wrapper script instead of calling `scripts/read_outlook_win.py` directly from the skill.
-- Treat Codex CLI as the primary execution mode. Use direct Python execution only for debugging.
-- Mail abstracts now default to Codex-generated body summaries with a local cache; the first run for unseen emails is slower than repeat runs.
-- Use the HTML report flow when the user wants a readable personal review artifact with checkboxes and exportable review state.
+- Treat Codex CLI as the release execution mode for this skill.
+- Prefer the prompt verb `start`; treat `run` and `launch` as equivalent aliases for opening the workspace.
+- On `start`/`run`/`launch`, execute the launcher command directly instead of reading README or exploring the workspace first.
+- Use the PowerShell-native `launch_mailhandle.ps1` entrypoint from Codex sessions.
+- If the user asks for a `cmd.exe` command, provide `powershell -NoProfile -ExecutionPolicy Bypass -File "%USERPROFILE%\.codex\skills\mailhandle\scripts\launch_mailhandle.ps1"` instead of defaulting to `start_mailhandle.cmd`.
+- Report the launcher output directly; it comes from `%USERPROFILE%\.codex\skills\mailhandle\tmp\mailhandle-last-start.txt`.
+- Use the launcher instead of running `run_mail_database.py` directly from Codex, because the workspace server is a long-lived local process and the launcher handles startup plus browser auto-open.
+- Keep the documented workflow centered on `scripts/run_mail_database.py`; do not reintroduce removed summary/report entrypoints.
+- The SQLite database is the source of truth for review state once initialized.
+- Mail abstracts default to Codex-generated body summaries with a local cache; first runs for unseen emails are slower than repeat runs.
 - Tune personal priority behavior in `scripts/priority_rules.json`, especially `owner_aliases` and `manager_senders`.
-- When priority rules need editing, use the browser editor flow instead of asking the user to hand-edit JSON directly. The editor is form-based and safer than raw JSON editing.
-- For GitHub releases, package only the skill source/docs and exclude local artifacts like `.cache`, `records`, `sessions`, `tmp`, `log`, `__pycache__`, `*.pyc`, `.env`, and local state files.
+- When priority rules need editing, use the browser editor flow instead of hand-editing JSON directly.
+- Response drafts should not include signatures or contact blocks because Outlook adds the configured signature.
+- For GitHub releases, package only the skill source/docs and exclude local artifacts like `.cache`, `data`, `records`, `sessions`, `tmp`, `log`, `__pycache__`, `*.pyc`, `.env`, and local state files.
 - Keep summaries grounded in the returned fields. Do not invent senders, actions, or deadlines.
-- If the user asks to change priority logic, edit `scripts/priority_rules.json`.
 
 ## References
+
+Read `README.md` for:
+- end-user installation and setup
+- Codex CLI prerequisites
+- Windows/Outlook compatibility
 
 Read `references/runbook.md` for:
 - available arguments
 - project file locations
 - troubleshooting notes
 
-Read `references/example-prompts.md` for:
-- ready-to-use OpenClaw prompts
-- common mailbox review patterns
+Read `references/database-design.md` for:
+- the SQLite-backed history model
+- grouping and sync rules
+- DPAPI encryption strategy
+- browser workspace behavior

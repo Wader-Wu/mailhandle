@@ -79,9 +79,18 @@ def normalize_datetime(value):
 def parse_date(value: str | None, end_of_day: bool = False):
     if not value:
         return None
-    parsed = datetime.strptime(value, "%Y-%m-%d")
-    if end_of_day:
-        return parsed + timedelta(days=1)
+    text = str(value).strip()
+    try:
+        parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError:
+        parsed = datetime.strptime(text[:10], "%Y-%m-%d")
+        if end_of_day:
+            parsed = parsed + timedelta(days=1)
+    else:
+        if getattr(parsed, "tzinfo", None) is not None:
+            parsed = parsed.astimezone().replace(tzinfo=None)
+        if end_of_day and len(text) <= 10:
+            parsed = parsed + timedelta(days=1)
     return parsed
 
 
@@ -93,6 +102,8 @@ def get_date_bounds(date_preset: str, since: str | None, until: str | None):
     if date_preset == "today":
         start = now.replace(hour=0, minute=0, second=0, microsecond=0)
         end = start + timedelta(days=1)
+    elif date_preset == "last_2days":
+        start = now - timedelta(days=2)
     elif date_preset == "last_7_days":
         start = now - timedelta(days=7)
     elif date_preset == "this_month":
@@ -206,6 +217,7 @@ def fetch_messages(args: argparse.Namespace) -> list[dict]:
         messages.append(
             {
                 "id": str(getattr(item, "EntryID", "") or ""),
+                "store_id": str(getattr(item, "StoreID", "") or ""),
                 "folder": str(folder_config["name"]),
                 "subject": str(getattr(item, "Subject", "<no subject>")),
                 "conversation_topic": str(
@@ -261,7 +273,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--subject-contains")
     parser.add_argument(
         "--date-preset",
-        choices=["today", "last_7_days", "this_month", "last_month"],
+        choices=["today", "last_2days", "last_7_days", "this_month", "last_month"],
     )
     parser.add_argument("--since")
     parser.add_argument("--until")

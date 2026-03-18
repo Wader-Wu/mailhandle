@@ -6,22 +6,19 @@
 - Runtime code: `scripts/`
 - Runtime rule config: `scripts/priority_rules.json`
 - Runtime env template: `scripts/.env.example`
-- Release output from the source repo: `release/mailhandle/`
-- Installed skill target in Codex: `~/.codex/skills/mailhandle`
-- Installed skill target in OpenClaw: `~/.openclaw/workspace/skills/mailhandle`
+- SQLite history design: `references/database-design.md`
+- Local DB path: `data/mailhandle.sqlite`
 
 ## GitHub Release Packaging
 
-When building a GitHub release, include only the skill runtime and documentation needed by another user to run it.
-
-Keep:
+Include:
 
 - `README.md`
 - `SKILL.md`
 - `references/`
 - `scripts/`
 
-Ignore:
+Exclude:
 
 - `.cache/`
 - `records/`
@@ -32,130 +29,75 @@ Ignore:
 - `.sandbox-bin/`
 - `__pycache__/`
 - `*.pyc`
+- `data/`
 - `auth.json`
 - `history.jsonl`
 - `models_cache.json`
 - `state_*.sqlite*`
 - any local `.env` file
 
-If you publish a zip or release asset manually, apply the ignore list before uploading so the bundle stays reproducible and does not leak local state.
-
 ## Wrapper Usage
 
-Default usage is via Codex CLI with the installed skill.
+Primary workflow:
 
-From the installed skill root, use:
-
-```bash
-python3 scripts/run_summary.py --json
+```powershell
+& "$env:USERPROFILE\.codex\skills\mailhandle\scripts\launch_mailhandle.ps1"
 ```
 
-This now always:
+Manual `cmd.exe` launch:
 
-- builds the summary result
-- writes a timestamped summary JSON and static HTML review report under `records/YYYY-MM-DD/`
-- tries to open the generated HTML report
-- asks Codex CLI to summarize mail bodies into cleaner abstracts, then caches those abstracts locally for repeat runs
-
-On native Windows/Codex sessions, `python scripts/run_summary.py --json` is the expected
-debug command when validating the installed skill outside Codex CLI. The Windows Outlook
-reader auto-detects the current Python interpreter.
-
-For a self-contained static review page with checkboxes and exportable review state, use:
-
-```bash
-python scripts/run_review_report.py --date-preset today
+```bat
+powershell -NoProfile -ExecutionPolicy Bypass -File "%USERPROFILE%\.codex\skills\mailhandle\scripts\launch_mailhandle.ps1"
 ```
 
-This writes a timestamped summary JSON and HTML file under `records/YYYY-MM-DD/`.
+Canonical Codex prompt:
 
-To edit `priority_rules.json` in a browser and save it back directly, use:
-
-```bash
-python scripts/run_priority_rules_editor.py
+```text
+$mailhandle start
 ```
 
-This starts a local HTTP server, opens a form-based browser editor, validates the generated JSON, and writes changes back to `scripts/priority_rules.json`.
+Accepted aliases:
 
-For local debugging from the source repo:
-
-```bash
-cd /path/to/mailhandle
-source .venv/bin/activate
-python scripts/summarize_mail.py --date-preset today
+```text
+$mailhandle run
+$mailhandle launch
 ```
 
-To build the release and install into Codex from the source repo:
+This:
 
-```bash
-cd /path/to/mailhandle
-python3 .dev/publish_skill.py --install-target codex
+- starts the Python workspace server in the background
+- requests browser auto-open for the workspace URL
+- returns control to Codex after printing the startup summary
+- writes the workspace URL and startup status to `tmp\mailhandle-last-start.txt`
+- syncs the local SQLite database
+- preserves `status`
+- lets you open specific Outlook items
+- lets you draft thread responses and open `Reply All` in Outlook
+- embeds the priority-rules editor in the same page
+
+After launch, read:
+
+```powershell
+Get-Content "$env:USERPROFILE\.codex\skills\mailhandle\tmp\mailhandle-last-start.txt"
 ```
 
-To build once and install into both Codex and OpenClaw:
+or
 
-```bash
-cd /path/to/mailhandle
-python3 .dev/publish_skill.py --install-target both
+```bat
+type "%USERPROFILE%\.codex\skills\mailhandle\tmp\mailhandle-last-start.txt"
 ```
 
-Supported arguments:
+If the browser does not appear, open the reported workspace URL manually.
 
-- `--limit N`
-- `--from-contains TEXT`
-- `--subject-contains TEXT`
-- `--project TEXT`
-- `--date-preset today|yesterday|last_7_days|this_month|last_month`
-- `--since YYYY-MM-DD`
-- `--until YYYY-MM-DD`
-- `--unread-only`
-- `--include-body`
-- `--include-notifications`
-- `--no-collapse`
-- `--verbose`
-- `--json`
+Direct `python scripts/run_mail_database.py` is still valid for manual debugging, but it should not be the default Codex skill entrypoint because it keeps the CLI attached to the long-lived server process.
 
-The HTML report builder also supports:
+`scripts\start_mailhandle.cmd` remains available as a thin wrapper, but the direct `cmd.exe` command above is the recommended manual CMD entrypoint.
 
-- `--input-json PATH`
-- `--output PATH`
-- `--output-dir DIR`
-- `--title TEXT`
-
-Current summary behavior:
-
-- reads filtered inbox mail first
-- checks `Sent Items` for later replies in the same thread
-- marks todos with response metadata when a reply is found
-- keeps replied items visible so OpenClaw can suggest monitoring instead of duplicate action
-- uses Codex CLI to generate per-email abstracts from cleaned body content when Codex is available
-- keeps a local abstract cache under `.cache/` so repeated runs avoid re-summarizing the same mail
-- plain-text reports split results into `Needs action` and `Already replied`
-- static HTML reports keep local browser-side review state for done checkboxes and can export reviewed HTML/JSON snapshots
+To edit `priority_rules.json`, use the embedded browser editor in the workspace.
 
 ## Priority Tuning
 
-Edit `scripts/priority_rules.json`.
-
-Supported rule keys:
-
-- `priority`
-- `unread`
-- `importance`
-- `subject_contains_any`
-- `body_contains_any`
-- `sender_contains_any`
-- `attention_flags_any`
-- `sender_matches_manager`
-- `categories_any`
-- `received_within_days`
-
-Behavior flags in `priority_rules.json`:
-
-- `suppress_low_priority_notifications`
-- `collapse_similar_emails`
-
-Priority-tuning fields in `priority_rules.json`:
+Useful fields in `scripts/priority_rules.json`:
 
 - `owner_aliases`
 - `manager_senders`
@@ -164,10 +106,7 @@ Priority-tuning fields in `priority_rules.json`:
 ## Troubleshooting
 
 - If Outlook access fails, verify classic Outlook is installed and signed in on Windows.
-- If `Sent Items` looks empty, confirm Outlook is running in classic mode and mailbox folders have finished syncing.
-- If Python path issues appear during development, check `WINDOWS_PYTHON_EXE` in the repo's `.env`.
-  Native Windows runs should not need this override; it is mainly for WSL or custom Python installs.
-- If abstracts are slow on the first run, that is expected; new emails are summarized through Codex CLI once and then cached under `.cache/`.
-- If cached abstracts look stale or wrong after prompt changes, delete `.cache/mailhandle_abstracts.json` and rerun.
-- If the installed skill behaves differently, republish from the source repo with `python3 .dev/publish_skill.py --install-target codex` or `--install-target both`.
-- If Outlook is busy, rerun the command; the project already retries common COM busy errors.
+- If Outlook is busy, open it first and rerun.
+- If the browser workspace cannot open Outlook items, verify `EntryID` and `StoreID` are present in the stored rows.
+- If abstracts are slow on first run, that is expected; new emails are summarized through Codex CLI and then cached under `.cache/`.
+- If cached abstracts look stale after prompt changes, delete `.cache/mailhandle_abstracts.json` and rerun.

@@ -462,7 +462,7 @@ HTML_PAGE = """<!DOCTYPE html>
               <label>Boost owner attention</label>
               <div class="toggle">
                 <input id="boostOwnerAttention" type="checkbox">
-                <span>Apply the legacy attention boost in addition to explicit rules</span>
+                <span>Apply the owner-attention boost in addition to explicit rules</span>
               </div>
             </div>
           </div>
