@@ -91,6 +91,7 @@ This:
 - preserves `status`
 - lets you open specific Outlook items
 - lets you draft thread responses and open `Reply All` in Outlook
+- includes a `second language` dropdown in the response modal with `None`, `Thailand`, and `Chinese`
 - embeds the priority-rules editor in the same page
 
 After launch, read:
@@ -117,6 +118,13 @@ If the `codex` executable is on `PATH`, the runtime can use it for:
 
 - LLM-generated mail abstracts
 - reply drafting for a thread
+
+Reply drafting details:
+
+- the modal uses free-text `Additional notes` plus a separate `second language` dropdown
+- the dropdown automatically requests the localized version, so users do not need to type that into notes
+- pasted Outlook replies keep a normal mail layout: greeting, English body, then optional local-language body
+- the optional local-language body is shown with a light darker background in Outlook HTML and a compact marker like `[Language_TH]`
 
 Without Codex CLI:
 

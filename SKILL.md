@@ -29,6 +29,7 @@ description: Package the standalone Windows `mailhandle` Outlook workspace as a 
    - inline `status` editing
    - an `Open` action for a specific Outlook item
    - thread-level response drafting that opens `Reply All` in Outlook
+   - a `second language` dropdown in the response modal with `None`, `Thailand`, and `Chinese`
    - an embedded priority-rules editor
 10. If the user asks to update priority rules, use the embedded editor in the workspace.
 
@@ -71,6 +72,8 @@ $mailhandle launch
 - When priority rules need editing, use the browser editor flow instead of hand-editing JSON directly.
 - Priority rule edits are forward-looking. They affect future synced items and should not be described as retroactively rescoring historical SQLite rows unless the user explicitly asks for a rebuild/reset.
 - Response drafts should not include signatures or contact blocks because Outlook adds the configured signature.
+- Reply drafting uses a structured internal format, but the Outlook compose result should read like a normal email body: greeting, English body, then optional localized body.
+- If a second language is selected in the modal, the user should not need to repeat that request in the notes field.
 - For GitHub releases, package only the skill source/docs and exclude local artifacts like `.cache`, `data`, `records`, `sessions`, `tmp`, `log`, `__pycache__`, `*.pyc`, `.env`, and local state files.
 - For release prep, update `references/release-notes-next.md` before packaging.
 - Keep summaries grounded in the returned fields. Do not invent senders, actions, or deadlines.

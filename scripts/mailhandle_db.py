@@ -3,6 +3,7 @@ import ctypes
 import html
 import json
 import os
+import re
 import secrets
 import sqlite3
 from datetime import datetime
@@ -72,6 +73,103 @@ def _draft_text_to_html(value: str) -> str:
             continue
         paragraphs.append(f"<p>{'<br>'.join(lines)}</p>")
     return "".join(paragraphs)
+
+
+def _draft_sections(value: str) -> list[tuple[str, str]]:
+    text = str(value or "").strip()
+    if not text:
+        return []
+    def decode_body(raw: str) -> str:
+        return (
+            str(raw or "")
+            .replace("\\r\\n", "\n")
+            .replace("\\n", "\n")
+            .replace("\\r", "\n")
+            .replace('\\"', '"')
+            .replace("\\\\", "\\")
+            .strip()
+        )
+    if text.startswith("{") and text.endswith("}"):
+        try:
+            payload = json.loads(text)
+        except Exception:
+            payload = None
+        if isinstance(payload, dict):
+            greeting = decode_body(payload.get("greeting"))
+            body_en = decode_body(payload.get("body_en"))
+            body_local = decode_body(payload.get("body_local"))
+            local_language = normalize_text(payload.get("local_language")).lower()
+            if body_en or body_local or greeting:
+                sections: list[tuple[str, str]] = []
+                en_parts = [part for part in [greeting, body_en] if part]
+                if en_parts:
+                    sections.append(("BODY", f"{os.linesep}{os.linesep}".join(en_parts)))
+                if body_local:
+                    local_note = f"[Language_{(local_language or 'local').upper()}]"
+                    sections.append(("LOCAL", f"{local_note} {body_local}"))
+                if sections:
+                    return sections
+            sections: list[tuple[str, str]] = []
+            for key, raw_value in payload.items():
+                if not str(key).startswith("body_"):
+                    continue
+                body = decode_body(raw_value)
+                if not body:
+                    continue
+                label = str(key)[5:].replace("_", " ").strip().upper() or "BODY"
+                sections.append((label, body))
+            if sections:
+                return sections
+            for key in ("draft", "body", "reply"):
+                body = decode_body(payload.get(key))
+                if body:
+                    return [("BODY", body)]
+        matches = re.findall(
+            r'"(body_[^"]+)"\s*:\s*"(.*?)"(?=\s*,\s*"body_|\s*\}$)',
+            text,
+            flags=re.DOTALL,
+        )
+        if matches:
+            sections = []
+            for key, raw_value in matches:
+                body = decode_body(raw_value)
+                if not body:
+                    continue
+                label = str(key)[5:].replace("_", " ").strip().upper() or "BODY"
+                sections.append((label, body))
+            if sections:
+                return sections
+    return [("BODY", text)]
+
+
+def _draft_sections_to_text(value: str) -> str:
+    sections = _draft_sections(value)
+    if not sections:
+        return ""
+    return f"{os.linesep}{os.linesep}".join(body.strip() for _, body in sections if body.strip()).strip()
+
+
+def _draft_sections_to_html(value: str) -> str:
+    sections = _draft_sections(value)
+    if not sections:
+        return ""
+    if len(sections) == 1 and sections[0][0] == "BODY":
+        return _draft_text_to_html(sections[0][1])
+
+    blocks: list[str] = []
+    for index, (label, body) in enumerate(sections):
+        content_html = _draft_text_to_html(body)
+        if not content_html:
+            continue
+        if index == 0 and label == "BODY":
+            blocks.append(content_html)
+            continue
+        blocks.append(
+            '<div style="margin:12px 0 0 0; padding:12px 14px; border:1px solid #c9d2dc; '
+            'border-radius:12px; color:#1f2937; background:#eef2f6;">'
+            f"{content_html}</div>"
+        )
+    return "".join(blocks)
 
 
 def _codex_footer_html() -> str:
@@ -799,13 +897,14 @@ def _apply_draft_to_reply(reply, draft_text: str) -> None:
     draft = normalize_text(draft_text)
     if not draft:
         return
-    draft_html = _draft_text_to_html(draft_text)
+    clean_text = _draft_sections_to_text(draft_text)
+    draft_html = _draft_sections_to_html(draft_text)
     existing_html = str(getattr(reply, "HTMLBody", "") or "")
     if draft_html and existing_html:
         reply.HTMLBody = f"{draft_html}{_codex_footer_html()}{existing_html}"
         return
     reply.Body = (
-        f"{draft_text}{os.linesep}{os.linesep}"
+        f"{clean_text}{os.linesep}{os.linesep}"
         f"{_codex_footer_text()}{os.linesep}{os.linesep}{reply.Body}"
     )
 

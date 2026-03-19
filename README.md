@@ -48,6 +48,29 @@ Without Codex CLI:
 - mail abstracts fall back to local heuristics
 - reply-draft generation is unavailable
 
+## Reply Drafting
+
+In the response modal:
+
+- `Additional notes` remains the free-text guidance box
+- `second language` is a dropdown with `None`, `Thailand`, and `Chinese`
+- the dropdown default is `None`
+- selecting a second language automatically instructs the LLM, so you do not need to repeat that request in notes
+
+Generated Outlook replies are pasted as normal mail content:
+
+- `greeting`
+- `body_en`
+- optional `body_local`
+
+When `body_local` is present:
+
+- it is appended after the English body
+- Outlook HTML paste shows it with a light darker background
+- it begins with a compact marker such as `[Language_TH]`
+
+The pasted reply does not show JSON keys, language section titles like `EN` or `TH`, or the structured `closing` field.
+
 ## Required Runtime
 
 Required:
