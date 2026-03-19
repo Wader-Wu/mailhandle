@@ -50,6 +50,18 @@ def _draft_text_to_html(value: str) -> str:
     return "".join(paragraphs)
 
 
+def _codex_footer_html() -> str:
+    return (
+        '<div style="margin:12px 0 10px 0; padding-top:10px; border-top:1px solid #c7ccd6; '
+        "font-family:Consolas, 'Courier New', monospace; font-size:10pt; line-height:1.4; "
+        'color:#5f6b7a;">[ Powered by Codex ]</div>'
+    )
+
+
+def _codex_footer_text() -> str:
+    return f"------------------------------{os.linesep}[ Powered by Codex ]"
+
+
 def normalize_subject_key(subject: str) -> str:
     text = normalize_text(subject).lower()
     text = text.replace("[external]:", "").replace("[ext]:", "")
@@ -670,9 +682,12 @@ def open_reply_all(email_id: str, draft_text: str) -> None:
             draft_html = _draft_text_to_html(draft_text)
             existing_html = str(getattr(reply, "HTMLBody", "") or "")
             if draft_html and existing_html:
-                reply.HTMLBody = f"{draft_html}{existing_html}"
+                reply.HTMLBody = f"{draft_html}{_codex_footer_html()}{existing_html}"
             else:
-                reply.Body = f"{draft_text}{os.linesep}{os.linesep}{reply.Body}"
+                reply.Body = (
+                    f"{draft_text}{os.linesep}{os.linesep}"
+                    f"{_codex_footer_text()}{os.linesep}{os.linesep}{reply.Body}"
+                )
         reply.Display()
     finally:
         pythoncom.CoUninitialize()

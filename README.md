@@ -1,79 +1,66 @@
 # Mailhandle
 
-`mailhandle` is a Codex CLI skill for native Windows that reads Outlook mail, stores review history in SQLite, and opens a local browser workspace for triage.
+`mailhandle` is a native Windows Outlook workspace that syncs mail into a local SQLite database and serves a local browser UI for review.
 
-Default usage is through Codex CLI. If the environment is not clearly defined, assume Codex CLI and the local browser workspace.
+It can run in three modes:
 
-Recommended Codex prompt:
+- standalone Windows tool launched from PowerShell or `cmd.exe`
+- standalone Windows tool with optional Codex CLI features enabled
+- Codex CLI skill installed under `~/.codex/skills/mailhandle`
 
-```text
-$mailhandle start
-```
-
-Accepted aliases:
-
-```text
-$mailhandle run
-$mailhandle launch
-```
+The runtime itself is not tied to the Codex skill environment. The code resolves paths from the script location and can run from any copied install folder that keeps the `scripts\` contents together.
 
 ## What It Does
 
-- Reads Outlook mail from classic Outlook on Windows
-- Syncs mail into a local SQLite database
-- Preserves review state such as `status`
-- Groups related mail by thread or normalized subject
-- Uses Codex CLI to generate concise abstracts from mail content
-- Opens a local browser workspace with:
-  - a mailbox tab for review, filters, response drafting, and Outlook opening
-  - an embedded priority-rules editor
+- reads Outlook mail from classic Outlook on Windows
+- syncs mail into `data\mailhandle.sqlite`
+- preserves review state such as `status`
+- groups related mail by thread or normalized subject
+- opens a local browser workspace for triage
+- provides Outlook `Open` actions for specific items
+- provides thread-level response drafting and `Reply All` opening
+- embeds a priority-rules editor for `scripts\priority_rules.json`
 
-## Requirements
+## Works Without Codex CLI
+
+These features work with only Windows, Outlook, Python, and `pywin32`:
+
+- mailbox sync into SQLite
+- browser workspace startup
+- priority and status filtering
+- inline `status` editing
+- Outlook `Open` actions
+- priority-rules editing
+- fallback non-LLM abstracts based on message content
+
+## Optional Codex CLI Features
+
+If the `codex` executable is installed, `mailhandle` can also use it for:
+
+- cleaner LLM-generated mail abstracts
+- thread reply drafting in the workspace
+
+Without Codex CLI:
+
+- the workspace still runs
+- mail abstracts fall back to local heuristics
+- reply-draft generation is unavailable
+
+## Required Runtime
 
 Required:
 
 - Windows 10 or Windows 11
-- Classic Outlook desktop app installed and signed in
-- Node.js with `npm`, to install Codex CLI
+- classic Outlook desktop app installed and signed in
 - Python 3.10 or newer on Windows
 - `pywin32` installed in that Python environment
 
-Local storage:
+Local runtime files:
 
-- `data\mailhandle.sqlite` for history and review state
-- `.cache\mailhandle_abstracts.json` for abstract caching
-
-## Outlook Compatibility
-
-This skill uses Outlook COM through `win32com`.
-
-Supported:
-
-- Classic Outlook for Windows
-
-Not supported:
-
-- New Outlook when classic COM automation is unavailable
-- Outlook Web
-- macOS or Linux native Outlook access
-
-## Clean-Machine Setup
-
-### 1. Install Python
-
-Install Python 3.10+ for Windows and confirm `python` or `py` works:
-
-```powershell
-python --version
-```
-
-or
-
-```powershell
-py --version
-```
-
-### 2. Install Python dependency
+- `scripts\priority_rules.json`
+- `data\mailhandle.sqlite`
+- `.cache\mailhandle_abstracts.json`
+- `tmp\mailhandle-last-start.txt`
 
 Install `pywin32`:
 
@@ -87,16 +74,47 @@ If needed:
 py -m pip install pywin32
 ```
 
-### 3. Ensure Outlook is ready
+Before first run:
 
-- Install classic Outlook
-- Sign in to the mailbox
-- Let `Inbox` and `Sent Items` finish syncing
-- Open Outlook once before running the skill
+- open classic Outlook once
+- wait for `Inbox` and `Sent Items` to finish syncing
 
-### 4. Copy the skill folder
+## Optional Codex CLI Setup
 
-Copy this folder to:
+Install this only if you want LLM-generated abstracts and reply drafts.
+
+Requirements:
+
+- Node.js with `npm`
+- Codex CLI installed on `PATH`
+
+Install:
+
+```powershell
+npm i -g @openai/codex
+```
+
+Verify:
+
+```powershell
+codex --version
+```
+
+Optional model settings in `scripts\.env`:
+
+```env
+MAILHANDLE_ABSTRACT_MODEL=codex-mini-latest
+MAILHANDLE_RESPONSE_MODEL=codex-mini-latest
+```
+
+## Install Location
+
+Standalone install:
+
+- copy the project folder anywhere on disk
+- keep the `scripts\` directory contents together
+
+Codex skill install:
 
 ```text
 C:\Users\<username>\.codex\skills\mailhandle
@@ -106,7 +124,15 @@ C:\Users\<username>\.codex\skills\mailhandle
 
 Create `scripts\.env` from `scripts\.env.example`.
 
-Recommended fields:
+The launcher and priority logic now auto-detect the mailbox owner from Outlook.
+
+Use these only as overrides when:
+
+- Outlook autodetect is wrong
+- you want to force a specific mailbox identity
+- you are debugging an unusual environment
+
+Optional owner overrides:
 
 ```env
 MAIL_OWNER_EMAIL=your.name@company.com
@@ -118,192 +144,165 @@ Optional:
 ```env
 WINDOWS_PYTHON_EXE=C:\Path\To\Python\python.exe
 MAILHANDLE_ABSTRACT_MODEL=codex-mini-latest
+MAILHANDLE_RESPONSE_MODEL=codex-mini-latest
 ```
 
-## Install Node.js and Codex CLI
+## Start The Workspace
 
-Use the official Node.js Windows installer:
-
-- https://nodejs.org/en/download
-
-Recommended:
-
-- install the current LTS release
-- keep `npm` enabled
-
-Verify:
+From the `mailhandle` root folder in PowerShell:
 
 ```powershell
-node --version
-npm --version
+& ".\scripts\launch_mailhandle.ps1"
 ```
 
-Install Codex CLI:
+From the `mailhandle` root folder in `cmd.exe`:
+
+```bat
+powershell -NoProfile -ExecutionPolicy Bypass -File ".\scripts\launch_mailhandle.ps1"
+```
+
+From any folder, use the absolute path to your install:
 
 ```powershell
-npm i -g @openai/codex
+& "C:\path\to\mailhandle\scripts\launch_mailhandle.ps1"
 ```
 
-Start Codex once:
+or:
 
-```powershell
-codex
+```bat
+powershell -NoProfile -ExecutionPolicy Bypass -File "C:\path\to\mailhandle\scripts\launch_mailhandle.ps1"
 ```
 
-Upgrade later:
-
-```powershell
-npm i -g @openai/codex@latest
-```
-
-Notes:
-
-- OpenAI's current docs say Windows support is still experimental
-- This skill is intended for native Windows because it depends on classic Outlook COM automation
-
-## Primary Workflow
-
-Start the local browser workspace:
+If installed as a Codex skill, the same launcher is typically here:
 
 ```powershell
 & "$env:USERPROFILE\.codex\skills\mailhandle\scripts\launch_mailhandle.ps1"
 ```
 
-From `cmd.exe`:
+or:
 
 ```bat
 powershell -NoProfile -ExecutionPolicy Bypass -File "%USERPROFILE%\.codex\skills\mailhandle\scripts\launch_mailhandle.ps1"
 ```
 
-In Codex CLI, the intended skill prompt is `start`. `run` and `launch` are equivalent aliases.
+The launcher:
 
-The Codex launcher starts the workspace server in the background, requests browser auto-open, waits for the startup summary, and prints the workspace URL or current status.
+- starts the Python workspace server in the background
+- requests browser auto-open
+- prints the workspace URL or current startup status
+- writes the startup summary to `<mailhandle-root>\tmp\mailhandle-last-start.txt`
 
-These commands do not depend on the current working directory and are safe to run from any folder.
-
-`scripts\start_mailhandle.cmd` is still available as a thin wrapper, but the direct `cmd.exe` command above is the recommended manual CMD entrypoint.
-
-Read the current startup result from:
+Read the latest startup summary:
 
 ```powershell
-Get-Content "$env:USERPROFILE\.codex\skills\mailhandle\tmp\mailhandle-last-start.txt"
+Get-Content "C:\path\to\mailhandle\tmp\mailhandle-last-start.txt"
 ```
 
-or
+or:
 
 ```bat
-type "%USERPROFILE%\.codex\skills\mailhandle\tmp\mailhandle-last-start.txt"
+type "C:\path\to\mailhandle\tmp\mailhandle-last-start.txt"
 ```
 
-That file is the authoritative source for:
+If the browser does not appear, open the reported workspace URL manually.
 
-- workspace URL
-- startup confirmation
-- stdout/stderr log paths
+`scripts\start_mailhandle.cmd` remains available as a thin wrapper, but the direct launcher commands above are the preferred manual entrypoints.
 
-The launcher also tries to open that local page in your default browser. The page provides:
+## Codex Skill Usage
 
-- mailbox history from SQLite
-- time-range filters such as `today`, `last_2days`, and `last_7_days`
-- priority and status filters
-- inline `status` editing
-- an `Open` action for a specific Outlook item
-- thread-level `Response` drafting that opens `Reply All` in Outlook
-- an embedded priority-rules editor
+If you install this under `~/.codex/skills/mailhandle`, the intended prompts are:
 
-If you need to adjust priority matching behavior, use the embedded editor in the workspace.
+```text
+$mailhandle start
+$mailhandle run
+$mailhandle launch
+```
+
+Those prompts ultimately call the same `scripts\launch_mailhandle.ps1` launcher.
 
 ## Priority Tuning
 
-Edit:
+Use the embedded browser editor in the workspace when possible.
 
-```text
-scripts\priority_rules.json
-```
-
-Useful fields:
+Useful fields in `scripts\priority_rules.json`:
 
 - `owner_aliases`
 - `manager_senders`
 - `greeting_terms`
 
+## Outlook Compatibility
+
+This project uses Outlook COM through `win32com`.
+
+Supported:
+
+- classic Outlook for Windows
+
+Not supported:
+
+- new Outlook when classic COM automation is unavailable
+- Outlook Web
+- macOS or Linux native Outlook access
+
 ## Troubleshooting
 
 ### `No module named win32com`
 
-Install `pywin32` in the Windows Python environment used by the skill.
+Install `pywin32` in the Windows Python environment used by the launcher.
+
+### `codex` is not installed
+
+The workspace can still start and sync mail.
+
+Effects:
+
+- abstracts fall back to local heuristics
+- reply-draft generation is unavailable
 
 ### Outlook access fails or is slow
 
-- Open classic Outlook first
-- Wait for sync to finish
-- Try again if Outlook is busy
+- open classic Outlook first
+- wait for mailbox sync to finish
+- rerun after Outlook becomes responsive
 
 ### Only new Outlook is installed
 
-This skill is not expected to work reliably there. Use classic Outlook.
+This project is not expected to work reliably there. Use classic Outlook.
+
+### Browser did not open automatically
+
+Open the workspace URL from the launcher output or from:
+
+```text
+<mailhandle-root>\tmp\mailhandle-last-start.txt
+```
 
 ### Abstracts are slow on first run
 
-The first run for unseen emails is slower because Codex CLI generates and caches abstracts.
-
-### The launcher does not show the URL immediately
-
-From `cmd.exe`, prefer the direct launcher command:
-
-```bat
-powershell -NoProfile -ExecutionPolicy Bypass -File "%USERPROFILE%\.codex\skills\mailhandle\scripts\launch_mailhandle.ps1"
-```
-
-If you are using the wrapper, read the saved startup summary:
-
-```bat
-type "%USERPROFILE%\.codex\skills\mailhandle\tmp\mailhandle-last-start.txt"
-```
-
-If the browser still does not appear, open the reported workspace URL manually.
+If Codex CLI is installed, first-run abstracts for unseen mail are slower because they are generated once and cached under `.cache\`.
 
 ## Files
 
-- `SKILL.md`: skill usage instructions for Codex
-- `scripts\run_mail_database.py`: local browser workspace and sync entrypoint
+- `scripts\launch_mailhandle.ps1`: detached launcher entrypoint
+- `scripts\start_mailhandle.ps1`: PowerShell launcher implementation
 - `scripts\start_mailhandle.cmd`: optional thin CMD wrapper
-- `scripts\launch_mailhandle.ps1`: detached launcher helper
-- `scripts\start_mailhandle.ps1`: PowerShell implementation behind the launcher
-- `scripts\edit_priority_rules.py`: browser editor that saves rules back to disk
-- `scripts\mailhandle_db.py`: SQLite storage, DPAPI helpers, and Outlook open helper
+- `scripts\run_mail_database.py`: browser workspace and sync entrypoint
+- `scripts\mailhandle_db.py`: SQLite storage and Outlook helpers
 - `scripts\read_outlook.py`: Python-to-Windows reader bridge
 - `scripts\read_outlook_win.py`: Outlook COM reader
+- `scripts\summarize_mail.py`: summary and abstract generation logic
 - `scripts\priority_rules.json`: priority tuning rules
-- `references\runbook.md`: developer notes
-- `references\database-design.md`: SQLite-backed history design and rollout plan
-- `references\example-prompts.md`: example prompts
+- `SKILL.md`: Codex skill instructions
+- `references\runbook.md`: developer and packaging notes
+- `references\database-design.md`: SQLite-backed history design
+- `references\example-prompts.md`: Codex prompt examples
 
-## Notes for Sharing
+## Sharing
 
-When you share this skill, tell users:
+If you share this project with another user, tell them:
 
-- It is Windows-only
-- It requires classic Outlook
-- It requires Python plus `pywin32`
-- Codex CLI is the default intended usage
-
-The default installation target is:
-
-```text
-C:\Users\<username>\.codex\skills\mailhandle
-```
-
-The normal workflow is:
-
-```powershell
-& "$env:USERPROFILE\.codex\skills\mailhandle\scripts\launch_mailhandle.ps1"
-```
-
-From `cmd.exe`, use:
-
-```bat
-powershell -NoProfile -ExecutionPolicy Bypass -File "%USERPROFILE%\.codex\skills\mailhandle\scripts\launch_mailhandle.ps1"
-```
-
-Those commands request browser auto-open and print the workspace URL.
+- it runs as a standalone Windows tool
+- Codex CLI is optional, not mandatory for startup
+- classic Outlook is required
+- Python plus `pywin32` is required
+- the Codex skill install is just one packaging mode

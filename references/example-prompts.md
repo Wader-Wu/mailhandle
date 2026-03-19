@@ -1,6 +1,6 @@
 # Example Prompts
 
-Use these prompts directly in Codex CLI.
+Use these prompts only for the Codex skill mode. Standalone shell startup commands are documented in `README.md`.
 
 Recommended entrypoint:
 

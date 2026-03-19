@@ -17,8 +17,6 @@ PROJECT_KEYWORDS = {
     "eco": ["eco-"],
 }
 NOTIFICATION_TERMS = ["notification", "newsletter", "digest", "noreply", "updates."]
-MAIL_OWNER_EMAIL = "luqing.wu@lumentum.com"
-MAIL_OWNER_NAME = "Luqing Wu"
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEV_ENV_FILE = PROJECT_ROOT / ".env"
 RUNTIME_ENV_FILE = PROJECT_ROOT / "scripts" / ".env"
@@ -72,9 +70,35 @@ def load_priority_rules() -> dict:
 
 
 def get_mail_owner() -> dict[str, str]:
+    configured_email = os.getenv("MAIL_OWNER_EMAIL", "").strip()
+    configured_name = os.getenv("MAIL_OWNER_NAME", "").strip()
+    detected = {"email": "", "name": ""}
+    if not configured_email or not configured_name:
+        detected = detect_mail_owner()
     return {
-        "email": os.getenv("MAIL_OWNER_EMAIL", MAIL_OWNER_EMAIL),
-        "name": os.getenv("MAIL_OWNER_NAME", MAIL_OWNER_NAME),
+        "email": configured_email or detected["email"],
+        "name": configured_name or detected["name"],
+    }
+
+
+def detect_mail_owner() -> dict[str, str]:
+    script_path = Path(__file__).with_name("read_outlook.py")
+    command = [
+        sys.executable,
+        str(script_path),
+        "--mailbox-owner",
+        "--json",
+    ]
+    try:
+        completed = run_command_with_retry(command)
+        payload = json.loads(completed.stdout)
+    except Exception:
+        return {"email": "", "name": ""}
+
+    owner = payload.get("owner", {})
+    return {
+        "email": str(owner.get("email", "") or "").strip(),
+        "name": str(owner.get("name", "") or "").strip(),
     }
 
 
@@ -375,7 +399,7 @@ def recipient_matches_owner(recipient: dict, owner: dict[str, str]) -> bool:
     name = recipient.get("name", "").lower()
     owner_email = owner["email"].lower()
     owner_name = owner["name"].lower()
-    return owner_email in email or (owner_name and owner_name in name)
+    return (owner_email and owner_email in email) or (owner_name and owner_name in name)
 
 
 def get_attention_flags(message: dict, owner: dict[str, str]) -> list[str]:

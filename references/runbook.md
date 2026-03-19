@@ -1,8 +1,16 @@
 # Runbook
 
+This project is a standalone Windows runtime that can also be packaged as a Codex skill.
+
+## Runtime Modes
+
+- Standalone Windows app: launch `scripts\launch_mailhandle.ps1` from any copied install folder.
+- Standalone Windows app with Codex CLI: same runtime, plus LLM-generated abstracts and reply drafts.
+- Codex skill install: same runtime copied under `~/.codex/skills/mailhandle` and launched through prompt aliases.
+
 ## Source Layout
 
-- Skill root: the installed `mailhandle` folder
+- Install root: any copied `mailhandle` folder that preserves the `scripts\` contents
 - Runtime code: `scripts/`
 - Runtime rule config: `scripts/priority_rules.json`
 - Runtime env template: `scripts/.env.example`
@@ -38,19 +46,27 @@ Exclude:
 
 ## Wrapper Usage
 
-Primary workflow:
+Primary standalone workflow from the install root:
 
 ```powershell
-& "$env:USERPROFILE\.codex\skills\mailhandle\scripts\launch_mailhandle.ps1"
+& ".\scripts\launch_mailhandle.ps1"
 ```
 
 Manual `cmd.exe` launch:
 
 ```bat
-powershell -NoProfile -ExecutionPolicy Bypass -File "%USERPROFILE%\.codex\skills\mailhandle\scripts\launch_mailhandle.ps1"
+powershell -NoProfile -ExecutionPolicy Bypass -File ".\scripts\launch_mailhandle.ps1"
 ```
 
-Canonical Codex prompt:
+From any folder, replace `.\` with the absolute path to your install.
+
+Codex skill install example:
+
+```powershell
+& "$env:USERPROFILE\.codex\skills\mailhandle\scripts\launch_mailhandle.ps1"
+```
+
+Canonical Codex prompt after skill installation:
 
 ```text
 $mailhandle start
@@ -78,13 +94,13 @@ This:
 After launch, read:
 
 ```powershell
-Get-Content "$env:USERPROFILE\.codex\skills\mailhandle\tmp\mailhandle-last-start.txt"
+Get-Content ".\tmp\mailhandle-last-start.txt"
 ```
 
 or
 
 ```bat
-type "%USERPROFILE%\.codex\skills\mailhandle\tmp\mailhandle-last-start.txt"
+type ".\tmp\mailhandle-last-start.txt"
 ```
 
 If the browser does not appear, open the reported workspace URL manually.
@@ -92,6 +108,20 @@ If the browser does not appear, open the reported workspace URL manually.
 Direct `python scripts/run_mail_database.py` is still valid for manual debugging, but it should not be the default Codex skill entrypoint because it keeps the CLI attached to the long-lived server process.
 
 `scripts\start_mailhandle.cmd` remains available as a thin wrapper, but the direct `cmd.exe` command above is the recommended manual CMD entrypoint.
+
+## Optional Codex CLI Features
+
+If the `codex` executable is on `PATH`, the runtime can use it for:
+
+- LLM-generated mail abstracts
+- reply drafting for a thread
+
+Without Codex CLI:
+
+- startup still works
+- sync still works
+- the browser workspace still works
+- reply drafting is unavailable
 
 To edit `priority_rules.json`, use the embedded browser editor in the workspace.
 

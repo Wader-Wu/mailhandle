@@ -47,6 +47,51 @@ def get_body(item, max_length: int | None = None) -> str:
     return body
 
 
+def get_mailbox_owner() -> dict[str, str]:
+    outlook = win32com.client.Dispatch("Outlook.Application")
+    namespace = outlook.GetNamespace("MAPI")
+    current_user = getattr(namespace, "CurrentUser", None)
+
+    name = str(getattr(current_user, "Name", "") or "").strip()
+    address = str(getattr(current_user, "Address", "") or "").strip()
+    email = ""
+
+    try:
+        address_entry = getattr(current_user, "AddressEntry", None)
+        if address_entry is not None:
+            exchange_user = address_entry.GetExchangeUser()
+            exchange_name = str(getattr(exchange_user, "Name", "") or "").strip()
+            exchange_email = str(getattr(exchange_user, "PrimarySmtpAddress", "") or "").strip()
+            if exchange_name:
+                name = exchange_name
+            if exchange_email:
+                email = exchange_email
+    except Exception:
+        pass
+
+    if not email and "@" in address:
+        email = address
+
+    accounts = getattr(namespace.Session, "Accounts", None)
+    if accounts:
+        for index in range(1, int(accounts.Count) + 1):
+            account = accounts.Item(index)
+            if not email:
+                smtp = str(getattr(account, "SmtpAddress", "") or "").strip()
+                if smtp:
+                    email = smtp
+            if not name:
+                for attr_name in ("DisplayName", "UserName"):
+                    value = str(getattr(account, attr_name, "") or "").strip()
+                    if value:
+                        name = value
+                        break
+            if email and name:
+                break
+
+    return {"email": email, "name": name}
+
+
 def format_received(value) -> tuple[str, str]:
     if not value:
         return "<unknown>", ""
@@ -279,6 +324,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--until")
     parser.add_argument("--unread-only", action="store_true", default=False)
     parser.add_argument("--include-body", action="store_true")
+    parser.add_argument("--mailbox-owner", action="store_true")
     parser.add_argument("--json", action="store_true")
     return parser.parse_args()
 
@@ -288,9 +334,23 @@ def main() -> int:
     configure_stdout()
     pythoncom.CoInitialize()
     try:
-        messages = fetch_messages(args)
+        owner = get_mailbox_owner() if args.mailbox_owner else None
+        messages = [] if args.mailbox_owner else fetch_messages(args)
     finally:
         pythoncom.CoUninitialize()
+
+    if args.mailbox_owner:
+        payload = {
+            "owner": owner or {"email": "", "name": ""},
+            "source": "outlook_com",
+        }
+        if args.json:
+            print(json.dumps(payload, ensure_ascii=False))
+            return 0
+
+        print("Mailbox owner:", payload["owner"].get("name", "") or "<unknown>")
+        print("Email:", payload["owner"].get("email", "") or "<unknown>")
+        return 0
 
     if args.json:
         print(

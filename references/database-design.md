@@ -1,6 +1,6 @@
 # Database Design
 
-This document defines the SQLite-backed history layer for the `mailhandle` Codex skill.
+This document defines the SQLite-backed history layer for the standalone Windows `mailhandle` runtime, which can also be packaged as a Codex skill.
 
 ## Goal
 
@@ -15,7 +15,7 @@ The database should:
 - allow the webpage to update state and save changes immediately
 - support opening a specific Outlook item from the UI
 
-The database is a local skill artifact, not a shared server database.
+The database is a local runtime artifact, not a shared server database.
 
 ## Storage Location
 
@@ -219,11 +219,11 @@ This does not make the database secret against a machine admin, but it prevents 
 6. Add an Outlook-open helper for `email_id`.
 7. Keep the existing summary pipeline as the ingestion source.
 
-## Codex Skill Entry Points
+## Runtime Entry Points
 
-- `scripts/launch_mailhandle.ps1`: primary launcher for Codex sessions and PowerShell; starts the workspace in the background and requests browser auto-open
+- `scripts/launch_mailhandle.ps1`: primary launcher for PowerShell and Codex sessions; starts the workspace in the background and requests browser auto-open
 - `scripts/start_mailhandle.ps1`: launcher implementation that starts `run_mail_database.py --open-browser`
-- `scripts/start_mailhandle.cmd`: optional CMD wrapper; direct `powershell -NoProfile -ExecutionPolicy Bypass -File "%USERPROFILE%\.codex\skills\mailhandle\scripts\launch_mailhandle.ps1"` is the recommended manual `cmd.exe` command
+- `scripts/start_mailhandle.cmd`: optional CMD wrapper; direct `powershell -NoProfile -ExecutionPolicy Bypass -File ".\scripts\launch_mailhandle.ps1"` is the recommended manual `cmd.exe` command from the install root
 - `scripts/run_mail_database.py`: syncs the last 7 days, serves the local browser UI, and opens Outlook items
 - `scripts/mailhandle_db.py`: SQLite storage and DPAPI helpers
 - `data/mailhandle.sqlite`: local single-user database file

@@ -1,6 +1,6 @@
 ---
 name: mailhandle
-description: Read Outlook mail from Codex CLI on native Windows, sync it into a local SQLite database, review it in a browser workspace, and tune priority behavior with editable JSON rules.
+description: Package the standalone Windows `mailhandle` Outlook workspace as a Codex CLI skill, launch its local browser UI, and tune priority behavior with editable JSON rules.
 ---
 
 # Mailhandle
@@ -54,6 +54,7 @@ $mailhandle launch
 ## Rules
 
 - This skill depends on local classic Outlook on Windows and Windows Python configured in `scripts/.env` for installed/runtime use.
+- The underlying runtime is a standalone Windows tool; the Codex skill is one distribution and launch mode, not a special host environment.
 - Treat Codex CLI as the release execution mode for this skill.
 - Prefer the prompt verb `start`; treat `run` and `launch` as equivalent aliases for opening the workspace.
 - On `start`/`run`/`launch`, execute the launcher command directly instead of reading README or exploring the workspace first.
@@ -61,6 +62,7 @@ $mailhandle launch
 - If the user asks for a `cmd.exe` command, provide `powershell -NoProfile -ExecutionPolicy Bypass -File "%USERPROFILE%\.codex\skills\mailhandle\scripts\launch_mailhandle.ps1"` instead of defaulting to `start_mailhandle.cmd`.
 - Report the launcher output directly; it comes from `%USERPROFILE%\.codex\skills\mailhandle\tmp\mailhandle-last-start.txt`.
 - Use the launcher instead of running `run_mail_database.py` directly from Codex, because the workspace server is a long-lived local process and the launcher handles startup plus browser auto-open.
+- Codex CLI is optional for the runtime itself; without the `codex` executable, startup and core workspace features still work, but LLM-backed abstracts and reply drafting do not.
 - Keep the documented workflow centered on `scripts/run_mail_database.py`; do not reintroduce removed summary/report entrypoints.
 - The SQLite database is the source of truth for review state once initialized.
 - Mail abstracts default to Codex-generated body summaries with a local cache; first runs for unseen emails are slower than repeat runs.
@@ -73,8 +75,8 @@ $mailhandle launch
 ## References
 
 Read `README.md` for:
-- end-user installation and setup
-- Codex CLI prerequisites
+- standalone installation and setup
+- optional Codex CLI prerequisites
 - Windows/Outlook compatibility
 
 Read `references/runbook.md` for:

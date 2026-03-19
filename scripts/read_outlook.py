@@ -43,6 +43,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--until")
     parser.add_argument("--unread-only", action="store_true", default=False)
     parser.add_argument("--include-body", action="store_true")
+    parser.add_argument("--mailbox-owner", action="store_true")
     parser.add_argument("--json", action="store_true")
     return parser.parse_args()
 
@@ -99,12 +100,17 @@ def run_windows_reader(args: argparse.Namespace) -> dict:
     command = [
         get_windows_python(),
         str(script_path),
-        "--folder",
-        args.folder,
-        "--limit",
-        str(args.limit),
         "--json",
     ]
+    if args.mailbox_owner:
+        command.append("--mailbox-owner")
+    else:
+        command.extend([
+            "--folder",
+            args.folder,
+            "--limit",
+            str(args.limit),
+        ])
     if args.from_contains:
         command.extend(["--from-contains", args.from_contains])
     if args.subject_contains:
@@ -140,6 +146,12 @@ def main() -> int:
 
     if args.json:
         print(json.dumps(payload, ensure_ascii=False, indent=2))
+        return 0
+
+    if args.mailbox_owner:
+        owner = payload.get("owner", {})
+        print("Mailbox owner:", owner.get("name", "") or "<unknown>")
+        print("Email:", owner.get("email", "") or "<unknown>")
         return 0
 
     print(f"Fetched {len(messages)} messages via Outlook COM")
