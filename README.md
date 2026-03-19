@@ -14,7 +14,9 @@ The runtime itself is not tied to the Codex skill environment. The code resolves
 
 - reads Outlook mail from classic Outlook on Windows
 - syncs mail into `data\mailhandle.sqlite`
+- keeps one same-folder backup copy at `data\mailhandle.backup.sqlite`, refreshed once per local day
 - preserves review state such as `status`
+- keeps stored history rows stable unless the same email is synced again
 - groups related mail by thread or normalized subject
 - opens a local browser workspace for triage
 - provides Outlook `Open` actions for specific items
@@ -27,7 +29,7 @@ These features work with only Windows, Outlook, Python, and `pywin32`:
 
 - mailbox sync into SQLite
 - browser workspace startup
-- priority and status filtering
+- priority filtering and a default `All_Open` status view that hides `Done` items
 - inline `status` editing
 - Outlook `Open` actions
 - priority-rules editing
@@ -59,6 +61,7 @@ Local runtime files:
 
 - `scripts\priority_rules.json`
 - `data\mailhandle.sqlite`
+- `data\mailhandle.backup.sqlite`
 - `.cache\mailhandle_abstracts.json`
 - `tmp\mailhandle-last-start.txt`
 
@@ -230,6 +233,11 @@ Useful fields in `scripts\priority_rules.json`:
 - `manager_senders`
 - `greeting_terms`
 
+Notes:
+
+- `manager_senders` can match a display name, an SMTP address, or a combined form like `Bin Tan <Bin.Tan@lumentum.com>`
+- changing `priority_rules.json` affects future synced items; existing rows already stored in SQLite keep their saved priority/history
+
 ## Outlook Compatibility
 
 This project uses Outlook COM through `win32com`.
@@ -281,6 +289,13 @@ Open the workspace URL from the launcher output or from:
 
 If Codex CLI is installed, first-run abstracts for unseen mail are slower because they are generated once and cached under `.cache\`.
 
+### I changed priority rules but old items did not move
+
+That is the intended behavior for the current runtime.
+
+- new rule changes apply to future synced items
+- historical rows already stored in `data\mailhandle.sqlite` keep their existing saved priority unless you explicitly rebuild or replace the database
+
 ## Files
 
 - `scripts\launch_mailhandle.ps1`: detached launcher entrypoint
@@ -295,6 +310,7 @@ If Codex CLI is installed, first-run abstracts for unseen mail are slower becaus
 - `SKILL.md`: Codex skill instructions
 - `references\runbook.md`: developer and packaging notes
 - `references\database-design.md`: SQLite-backed history design
+- `references\release-notes-next.md`: draft notes and checklist for the next release
 - `references\example-prompts.md`: Codex prompt examples
 
 ## Sharing

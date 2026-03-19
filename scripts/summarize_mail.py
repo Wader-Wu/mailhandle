@@ -10,6 +10,8 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 
 PRIORITY_ORDER = {"low": 0, "medium": 1, "high": 2}
+DEFAULT_SENT_PRIORITY = "medium"
+DEFAULT_SENT_STATUS = "doing"
 PROJECT_KEYWORDS = {
     "zhuque": ["zhuque"],
     "nokia": ["nokia"],
@@ -42,6 +44,10 @@ def load_env_file(path: Path) -> None:
             continue
         key, value = line.split("=", 1)
         os.environ.setdefault(key.strip(), value.strip())
+
+
+def load_runtime_env() -> None:
+    load_env_file(DEV_ENV_FILE if DEV_ENV_FILE.exists() else RUNTIME_ENV_FILE)
 
 
 def parse_args() -> argparse.Namespace:
@@ -185,17 +191,28 @@ def build_reader_command(
 
 
 def run_reader(args: argparse.Namespace, *, folder: str = "inbox", limit: int | None = None) -> dict:
+    return run_reader_with_options(args, folder=folder, limit=limit, include_body=None)
+
+
+def run_reader_with_options(
+    args: argparse.Namespace,
+    *,
+    folder: str = "inbox",
+    limit: int | None = None,
+    include_body: bool | None = None,
+) -> dict:
     date_preset, since, until = resolve_dates(args)
     subject_filter = resolve_subject_filter(args)
+    include_body_flag = (args.include_body or folder == "inbox") if include_body is None else include_body
     command = build_reader_command(
         args,
         folder=folder,
-        limit=limit or args.limit,
+        limit=args.limit if limit is None else limit,
         date_preset=date_preset,
         since=since,
         until=until,
         subject_filter=subject_filter,
-        include_body=args.include_body or folder == "inbox",
+        include_body=include_body_flag,
     )
     completed = run_command_with_retry(command)
     payload = json.loads(completed.stdout)
@@ -209,7 +226,7 @@ def run_reader(args: argparse.Namespace, *, folder: str = "inbox", limit: int | 
         filters["project"] = args.project
     if subject_filter:
         filters["subject_contains"] = subject_filter
-    filters["include_body"] = args.include_body
+    filters["include_body"] = include_body_flag
     return payload
 
 
@@ -269,6 +286,25 @@ def normalize_person_text(value: str) -> str:
     return value
 
 
+def get_person_match_keys(value: str) -> set[str]:
+    text = normalize_person_text(value)
+    if not text:
+        return set()
+    keys = {text}
+    match = re.match(r"^(.*?)\s*<([^<>]+)>$", text)
+    if match:
+        name_part = normalize_person_text(match.group(1))
+        email_part = normalize_person_text(match.group(2))
+        if name_part:
+            keys.add(name_part)
+        if email_part:
+            keys.add(email_part)
+        return keys
+    if "@" in text:
+        keys.add(text)
+    return keys
+
+
 def get_sender_match_keys(message: dict) -> set[str]:
     sender = message.get("sender", {})
     keys = set()
@@ -277,9 +313,7 @@ def get_sender_match_keys(message: dict) -> set[str]:
         sender.get("name", ""),
         sender.get("email", ""),
     ]:
-        normalized = normalize_person_text(value)
-        if normalized:
-            keys.add(normalized)
+        keys.update(get_person_match_keys(str(value or "")))
     return keys
 
 
@@ -315,42 +349,13 @@ def get_subject_key(subject: str) -> str:
     return normalize_subject(subject)
 
 
-def get_sent_lookup_window(mail_payload: dict) -> tuple[str | None, str | None]:
-    timestamps = [
-        timestamp
-        for message in mail_payload.get("messages", [])
-        if (timestamp := get_message_timestamp(message)) is not None
-    ]
-    if not timestamps:
-        return None, None
-
-    earliest = min(timestamps) - timedelta(days=1)
-    latest = max(timestamps) + timedelta(days=7)
-    return earliest.date().isoformat(), latest.date().isoformat()
-
-
-def get_reply_limit(message_count: int) -> int:
-    return max(50, min(300, message_count * 8))
-
-
-def fetch_sent_messages(args: argparse.Namespace, mail_payload: dict) -> list[dict]:
-    since, until = get_sent_lookup_window(mail_payload)
-    if since is None:
-        return []
-
-    subject_filter = resolve_subject_filter(args)
-    command = build_reader_command(
+def fetch_sent_messages(args: argparse.Namespace) -> list[dict]:
+    payload = run_reader_with_options(
         args,
         folder="sent",
-        limit=get_reply_limit(len(mail_payload.get("messages", []))),
-        date_preset=None,
-        since=since,
-        until=until,
-        subject_filter=subject_filter,
-        include_body=False,
+        limit=args.limit,
+        include_body=True,
     )
-    completed = run_command_with_retry(command)
-    payload = json.loads(completed.stdout)
     return payload.get("messages", [])
 
 
@@ -490,15 +495,14 @@ def text_matches_any(text: str, values: list[str]) -> bool:
 
 
 def sender_matches_patterns(message: dict, patterns: list[str]) -> bool:
-    sender = message.get("sender", {})
-    sender_text = " ".join(
-        [
-            sender.get("display", ""),
-            sender.get("name", ""),
-            sender.get("email", ""),
-        ]
-    ).lower()
-    return any(pattern.lower() in sender_text for pattern in patterns if pattern)
+    sender_keys = get_sender_match_keys(message)
+    if not sender_keys:
+        return False
+    for pattern in patterns:
+        pattern_keys = get_person_match_keys(str(pattern or ""))
+        if pattern_keys and sender_keys.intersection(pattern_keys):
+            return True
+    return False
 
 
 def is_owner_greeted(message: dict, owner: dict[str, str], rules_config: dict) -> bool:
@@ -971,12 +975,51 @@ def build_todo(
         "collapsed_count": 1,
         "related_email_ids": [message.get("id", "")],
         "group_summary": build_group_summary(message, 1),
+        "folder": str(message.get("folder") or "Inbox"),
+        "status": "todo",
         "message": message,
     }
     if responded:
         todo["response_email_id"] = response_match.get("id", "")
         todo["responded_at"] = response_match.get("received", {}).get("iso", "")
         todo["response_subject"] = response_match.get("subject", "")
+    return todo
+
+
+def build_sent_todo(message: dict) -> dict:
+    subject = message.get("subject", "<no subject>")
+    abstract = " ".join(str(message.get("_llm_abstract") or "").split()).strip()
+    if not abstract:
+        abstract = build_body_based_abstract(message)
+    if not abstract or normalize_subject(abstract) == normalize_subject(subject):
+        abstract = subject
+    todo = {
+        "title": subject,
+        "subject_key": get_subject_key(subject),
+        "conversation_topic": message.get("conversation_topic", "") or "",
+        "thread_key": get_message_thread_key(message),
+        "priority": DEFAULT_SENT_PRIORITY,
+        "next_action": "Monitor thread",
+        "reason": "folder:sent",
+        "email_id": message.get("id", ""),
+        "store_id": message.get("store_id", ""),
+        "from": get_sender_display_name(message),
+        "received": message.get("received", {}).get("iso", ""),
+        "abstract": abstract,
+        "projects": infer_projects(message),
+        "attention_flags": [],
+        "owner_attention": False,
+        "responded": False,
+        "response_email_id": "",
+        "responded_at": "",
+        "response_subject": "",
+        "collapsed_count": 1,
+        "related_email_ids": [message.get("id", "")],
+        "group_summary": build_group_summary(message, 1),
+        "folder": str(message.get("folder") or "Sent Items"),
+        "status": DEFAULT_SENT_STATUS,
+        "message": message,
+    }
     return todo
 
 
@@ -1196,13 +1239,15 @@ def print_report(result: dict) -> None:
 
 
 def build_result(args: argparse.Namespace) -> dict:
-    load_env_file(DEV_ENV_FILE if DEV_ENV_FILE.exists() else RUNTIME_ENV_FILE)
+    load_runtime_env()
 
-    mail_payload = run_reader(args)
-    sent_messages = fetch_sent_messages(args, mail_payload)
+    mail_payload = run_reader(args, folder="inbox")
+    sent_messages = fetch_sent_messages(args)
     rules_config = load_priority_rules()
     owner = get_mail_owner()
-    llm_abstracts = generate_llm_abstracts(mail_payload.get("messages", []))
+    llm_abstracts = generate_llm_abstracts(
+        mail_payload.get("messages", []) + sent_messages
+    )
 
     todos = []
     for message in mail_payload.get("messages", []):
@@ -1215,6 +1260,11 @@ def build_result(args: argparse.Namespace) -> dict:
             message["_response_match"] = response_match
         priority, reasons = assign_priority(message, rules_config)
         todos.append(build_todo(message, priority, reasons, owner, rules_config))
+
+    for message in sent_messages:
+        message = message.copy()
+        message["_llm_abstract"] = llm_abstracts.get(str(message.get("id") or ""), "")
+        todos.append(build_sent_todo(message))
 
     todos = [
         todo

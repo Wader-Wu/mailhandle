@@ -25,7 +25,7 @@ description: Package the standalone Windows `mailhandle` Outlook workspace as a 
 9. The page provides:
    - mailbox history from SQLite
    - time-range filters such as `today`, `last_2days`, and `last_7_days`
-   - priority and status filters
+   - priority filters and a default `All_Open` status filter that hides `Done` items
    - inline `status` editing
    - an `Open` action for a specific Outlook item
    - thread-level response drafting that opens `Reply All` in Outlook
@@ -67,9 +67,12 @@ $mailhandle launch
 - The SQLite database is the source of truth for review state once initialized.
 - Mail abstracts default to Codex-generated body summaries with a local cache; first runs for unseen emails are slower than repeat runs.
 - Tune personal priority behavior in `scripts/priority_rules.json`, especially `owner_aliases` and `manager_senders`.
+- `manager_senders` can be configured as a display name, SMTP address, or `Name <email>`.
 - When priority rules need editing, use the browser editor flow instead of hand-editing JSON directly.
+- Priority rule edits are forward-looking. They affect future synced items and should not be described as retroactively rescoring historical SQLite rows unless the user explicitly asks for a rebuild/reset.
 - Response drafts should not include signatures or contact blocks because Outlook adds the configured signature.
 - For GitHub releases, package only the skill source/docs and exclude local artifacts like `.cache`, `data`, `records`, `sessions`, `tmp`, `log`, `__pycache__`, `*.pyc`, `.env`, and local state files.
+- For release prep, update `references/release-notes-next.md` before packaging.
 - Keep summaries grounded in the returned fields. Do not invent senders, actions, or deadlines.
 
 ## References
@@ -83,9 +86,14 @@ Read `references/runbook.md` for:
 - available arguments
 - project file locations
 - troubleshooting notes
+- release packaging and validation steps
 
 Read `references/database-design.md` for:
 - the SQLite-backed history model
 - grouping and sync rules
 - DPAPI encryption strategy
 - browser workspace behavior
+
+Read `references/release-notes-next.md` for:
+- the current draft release summary
+- the pre-release validation checklist

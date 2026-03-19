@@ -1,0 +1,657 @@
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e5]: Mailhandle workspace
+      - generic [ref=e27]:
+        - generic [ref=e28]: Luqing.Wu@lumentum.com
+        - generic [ref=e29]: "Last sync: 2026-03-19 09:44:50"
+    - generic [ref=e30]: Incremental sync stored 0 new items
+    - generic [ref=e31]:
+      - generic [ref=e32]:
+        - strong [ref=e33]: "18"
+        - generic [ref=e34]: Inbox
+      - generic [ref=e35]:
+        - strong [ref=e36]: "5"
+        - generic [ref=e37]: Sent Items
+      - generic [ref=e38]:
+        - strong [ref=e39]: "5"
+        - generic [ref=e40]: High
+      - generic [ref=e41]:
+        - strong [ref=e42]: "10"
+        - generic [ref=e43]: Medium
+      - generic [ref=e44]:
+        - strong [ref=e45]: "8"
+        - generic [ref=e46]: Low
+      - generic [ref=e47]:
+        - strong [ref=e48]: "17"
+        - generic [ref=e49]: Todo
+      - generic [ref=e50]:
+        - strong [ref=e51]: "6"
+        - generic [ref=e52]: Doing
+      - generic [ref=e53]:
+        - strong [ref=e54]: "0"
+        - generic [ref=e55]: Done
+    - generic [ref=e6]:
+      - button "Mailbox" [ref=e7] [cursor=pointer]
+      - button "Priority rules" [ref=e8] [cursor=pointer]
+  - generic [ref=e9]:
+    - generic [ref=e11]:
+      - button "Refresh from last sync" [ref=e12] [cursor=pointer]
+      - button "Reload view" [ref=e13] [cursor=pointer]
+    - generic [ref=e14]:
+      - generic [ref=e15]:
+        - generic [ref=e16]: Search
+        - searchbox "Search" [ref=e17]
+      - generic [ref=e18]:
+        - generic [ref=e19]: Time range
+        - combobox "Time range" [ref=e20]:
+          - option "All"
+          - option "Today"
+          - option "Last 2 days"
+          - option "Last 7 days" [selected]
+          - option "This month"
+          - option "Last month"
+      - generic [ref=e21]:
+        - generic [ref=e22]: Priority
+        - combobox "Priority" [ref=e23]:
+          - option "All" [selected]
+          - option "High"
+          - option "Medium"
+          - option "Low"
+      - generic [ref=e24]:
+        - generic [ref=e25]: Status
+        - combobox "Status" [ref=e26]:
+          - option "All_Open" [selected]
+          - option "All"
+          - option "Todo"
+          - option "Doing"
+          - option "Done"
+    - generic [ref=e56]:
+      - generic [ref=e57]:
+        - generic [ref=e58]:
+          - generic [ref=e59]:
+            - heading "Use of AI Agent In Our Work" [level=2] [ref=e60]
+            - generic [ref=e61]:
+              - generic [ref=e62]: 1 item
+              - generic [ref=e63]: start 2026-03-19 08:32:11
+              - generic [ref=e64]: latest 2026-03-19 08:32:11
+          - button "Response" [ref=e66] [cursor=pointer]
+        - article [ref=e68]:
+          - generic [ref=e69]:
+            - generic [ref=e70]:
+              - 'heading "RE: Use of AI Agent In Our Work" [level=3] [ref=e71]'
+              - generic [ref=e72]:
+                - generic [ref=e73]: MEDIUM
+                - generic [ref=e74]: SENT ITEMS
+                - generic [ref=e75]: Luqing Wu
+                - generic [ref=e76]: 2026-03-19 08:32:11
+            - generic [ref=e77]:
+              - combobox [ref=e78]:
+                - option "todo"
+                - option "doing" [selected]
+                - option "done"
+              - button "Open" [ref=e79] [cursor=pointer]
+          - generic [ref=e81]:
+            - generic [ref=e82]: Abstract
+            - paragraph [ref=e83]: Luqing Wu said he has developed a Codex-based AI agent tool for Outlook and is willing to share it with the group for feedback
+      - generic [ref=e84]:
+        - generic [ref=e85]:
+          - generic [ref=e86]:
+            - heading "Mar10/2026--Corning fiber issue from Santec" [level=2] [ref=e87]
+            - generic [ref=e88]:
+              - generic [ref=e89]: 4 items
+              - generic [ref=e90]: start 2026-03-17 09:28:59
+              - generic [ref=e91]: latest 2026-03-18 21:49:05
+          - button "Response" [ref=e93] [cursor=pointer]
+        - generic [ref=e94]:
+          - article [ref=e95]:
+            - generic [ref=e96]:
+              - generic [ref=e97]:
+                - 'heading "RE: Mar10/2026--Corning fiber issue from Santec" [level=3] [ref=e98]'
+                - generic [ref=e99]:
+                  - generic [ref=e100]: LOW
+                  - generic [ref=e101]: INBOX
+                  - generic [ref=e102]: Bingbing Xu
+                  - generic [ref=e103]: 2026-03-17 09:28:59
+              - generic [ref=e104]:
+                - combobox [ref=e105]:
+                  - option "todo" [selected]
+                  - option "doing"
+                  - option "done"
+                - button "Open" [ref=e106] [cursor=pointer]
+            - generic [ref=e108]:
+              - generic [ref=e109]: Abstract
+              - paragraph [ref=e110]: Corning will keep building the same fiber, but Corning Optical Fiber no longer wants to do 200kpsi fiber selection due to time and capacity constraints, with an update expected after OFC
+          - article [ref=e111]:
+            - generic [ref=e112]:
+              - generic [ref=e113]:
+                - 'heading "RE: Mar10/2026--Corning fiber issue from Santec" [level=3] [ref=e114]'
+                - generic [ref=e115]:
+                  - generic [ref=e116]: LOW
+                  - generic [ref=e117]: INBOX
+                  - generic [ref=e118]: Craig Barnes
+                  - generic [ref=e119]: 2026-03-18 04:14:10
+              - generic [ref=e120]:
+                - combobox [ref=e121]:
+                  - option "todo" [selected]
+                  - option "doing"
+                  - option "done"
+                - button "Open" [ref=e122] [cursor=pointer]
+            - generic [ref=e124]:
+              - generic [ref=e125]: Abstract
+              - paragraph [ref=e126]: Craig said 100 and 200 kpsi fiber are similarly reliable, with only a small advantage for 200 kpsi at tight bends, and advised reserving it for <=10 mm bends
+          - article [ref=e127]:
+            - generic [ref=e128]:
+              - generic [ref=e129]:
+                - 'heading "RE: Mar10/2026--Corning fiber issue from Santec" [level=3] [ref=e130]'
+                - generic [ref=e131]:
+                  - generic [ref=e132]: LOW
+                  - generic [ref=e133]: INBOX
+                  - generic [ref=e134]: Bin Tan
+                  - generic [ref=e135]: 2026-03-18 17:12:53
+              - generic [ref=e136]:
+                - combobox [ref=e137]:
+                  - option "todo" [selected]
+                  - option "doing"
+                  - option "done"
+                - button "Open" [ref=e138] [cursor=pointer]
+            - generic [ref=e140]:
+              - generic [ref=e141]: Abstract
+              - paragraph [ref=e142]: Read and decide next action
+          - article [ref=e143]:
+            - generic [ref=e144]:
+              - generic [ref=e145]:
+                - 'heading "RE: Mar10/2026--Corning fiber issue from Santec" [level=3] [ref=e146]'
+                - generic [ref=e147]:
+                  - generic [ref=e148]: LOW
+                  - generic [ref=e149]: INBOX
+                  - generic [ref=e150]: Bingbing Xu
+                  - generic [ref=e151]: 2026-03-18 21:49:05
+              - generic [ref=e152]:
+                - combobox [ref=e153]:
+                  - option "todo" [selected]
+                  - option "doing"
+                  - option "done"
+                - button "Open" [ref=e154] [cursor=pointer]
+            - generic [ref=e156]:
+              - generic [ref=e157]: Abstract
+              - paragraph [ref=e158]: No immediate fiber shortage is expected due to existing supplier inventory, and Lumentum and Corning will discuss progress at OFC while YOFC fiber PCNs are being issued
+      - generic [ref=e159]:
+        - generic [ref=e160]:
+          - generic [ref=e161]:
+            - 'heading "[External]:RE: 1x5 RLA GEN4 preamp functional failed measured gain." [level=2] [ref=e162]'
+            - generic [ref=e163]:
+              - generic [ref=e164]: 2 items
+              - generic [ref=e165]: start 2026-03-17 09:50:45
+              - generic [ref=e166]: latest 2026-03-18 19:22:32
+          - button "Response" [ref=e168] [cursor=pointer]
+        - generic [ref=e169]:
+          - article [ref=e170]:
+            - generic [ref=e171]:
+              - generic [ref=e172]:
+                - 'heading "RE: [External]:RE: 1x5 RLA GEN4 preamp functional failed measured gain." [level=3] [ref=e173]'
+                - generic [ref=e174]:
+                  - generic [ref=e175]: HIGH
+                  - generic [ref=e176]: INBOX
+                  - generic [ref=e177]: Thanadet Akkhrathanandon
+                  - generic [ref=e178]: 2026-03-17 09:50:45
+                  - generic [ref=e179]: replied
+              - generic [ref=e180]:
+                - combobox [ref=e181]:
+                  - option "todo"
+                  - option "doing" [selected]
+                  - option "done"
+                - button "Open" [ref=e182] [cursor=pointer]
+            - generic [ref=e184]:
+              - generic [ref=e185]: Abstract
+              - paragraph [ref=e186]: Thanadet asks Wader to review data for 30 units related to the 1x5 RLA GEN4 preamp measured gain failure
+          - article [ref=e187]:
+            - generic [ref=e188]:
+              - generic [ref=e189]:
+                - 'heading "RE: [External]:RE: 1x5 RLA GEN4 preamp functional failed measured gain." [level=3] [ref=e190]'
+                - generic [ref=e191]:
+                  - generic [ref=e192]: MEDIUM
+                  - generic [ref=e193]: SENT ITEMS
+                  - generic [ref=e194]: Luqing Wu
+                  - generic [ref=e195]: 2026-03-18 19:22:32
+              - generic [ref=e196]:
+                - combobox [ref=e197]:
+                  - option "todo"
+                  - option "doing" [selected]
+                  - option "done"
+                - button "Open" [ref=e198] [cursor=pointer]
+            - generic [ref=e200]:
+              - generic [ref=e201]: Abstract
+              - paragraph [ref=e202]: Luqing Wu acknowledged the 30-unit preamp gain issue data and said he will review it and respond this week
+      - generic [ref=e203]:
+        - generic [ref=e204]:
+          - generic [ref=e205]:
+            - heading "CCB Meeting - Circuit Pack Process Change" [level=2] [ref=e206]
+            - generic [ref=e207]:
+              - generic [ref=e208]: 1 item
+              - generic [ref=e209]: start 2026-03-18 17:32:12
+              - generic [ref=e210]: latest 2026-03-18 17:32:12
+          - button "Response" [ref=e212] [cursor=pointer]
+        - article [ref=e214]:
+          - generic [ref=e215]:
+            - generic [ref=e216]:
+              - heading "CCB Meeting - Circuit Pack Process Change" [level=3] [ref=e217]
+              - generic [ref=e218]:
+                - generic [ref=e219]: HIGH
+                - generic [ref=e220]: INBOX
+                - generic [ref=e221]: Prueksa Kaewsimuang
+                - generic [ref=e222]: 2026-03-18 17:32:12
+            - generic [ref=e223]:
+              - combobox [ref=e224]:
+                - option "todo" [selected]
+                - option "doing"
+                - option "done"
+              - button "Open" [ref=e225] [cursor=pointer]
+          - generic [ref=e227]:
+            - generic [ref=e228]: Abstract
+            - paragraph [ref=e229]: Updated agenda for the March 19, 2026 Circuit Pack CCB meeting covers CCR-034317 and CCR-034601 process changes, with stakeholder confirmation still needed
+      - generic [ref=e230]:
+        - generic [ref=e231]:
+          - generic [ref=e232]:
+            - 'heading "ACTION REQUIRED: Your approval is required for ECO ECO-144860" [level=2] [ref=e233]'
+            - generic [ref=e234]:
+              - generic [ref=e235]: 1 item
+              - generic [ref=e236]: start 2026-03-18 17:08:06
+              - generic [ref=e237]: latest 2026-03-18 17:08:06
+          - button "Response" [ref=e239] [cursor=pointer]
+        - article [ref=e241]:
+          - generic [ref=e242]:
+            - generic [ref=e243]:
+              - 'heading "ACTION REQUIRED: Your approval is required for ECO ECO-144860" [level=3] [ref=e244]'
+              - generic [ref=e245]:
+                - generic [ref=e246]: HIGH
+                - generic [ref=e247]: INBOX
+                - generic [ref=e248]: agilep@lumentum.com
+                - generic [ref=e249]: 2026-03-18 17:08:06
+            - generic [ref=e250]:
+              - combobox [ref=e251]:
+                - option "todo" [selected]
+                - option "doing"
+                - option "done"
+              - button "Open" [ref=e252] [cursor=pointer]
+          - generic [ref=e254]:
+            - generic [ref=e255]: Abstract
+            - paragraph [ref=e256]: ECO ECO-144860 for the Zhuque Ciena SMD14x8 DVT Plan Initial Release was moved to Approval and requires your review and approval
+      - generic [ref=e257]:
+        - generic [ref=e258]:
+          - generic [ref=e259]:
+            - heading "Introduction of OFS 980-26 based WDM" [level=2] [ref=e260]
+            - generic [ref=e261]:
+              - generic [ref=e262]: 1 item
+              - generic [ref=e263]: start 2026-03-18 17:03:22
+              - generic [ref=e264]: latest 2026-03-18 17:03:22
+          - button "Response" [ref=e266] [cursor=pointer]
+        - article [ref=e268]:
+          - generic [ref=e269]:
+            - generic [ref=e270]:
+              - 'heading "RE: Introduction of OFS 980-26 based WDM" [level=3] [ref=e271]'
+              - generic [ref=e272]:
+                - generic [ref=e273]: MEDIUM
+                - generic [ref=e274]: INBOX
+                - generic [ref=e275]: Bin Tan
+                - generic [ref=e276]: 2026-03-18 17:03:22
+            - generic [ref=e277]:
+              - combobox [ref=e278]:
+                - option "todo" [selected]
+                - option "doing"
+                - option "done"
+              - button "Open" [ref=e279] [cursor=pointer]
+          - generic [ref=e281]:
+            - generic [ref=e282]: Abstract
+            - paragraph [ref=e283]: Bin Tan shared historical bend loss evaluation data originally for YOFC fiber evaluation that also includes OFS and Corning comparisons
+      - generic [ref=e284]:
+        - generic [ref=e285]:
+          - generic [ref=e286]:
+            - heading "Meeting with Accelink on Mar18" [level=2] [ref=e287]
+            - generic [ref=e288]:
+              - generic [ref=e289]: 1 item
+              - generic [ref=e290]: start 2026-03-18 09:59:55
+              - generic [ref=e291]: latest 2026-03-18 09:59:55
+          - button "Response" [ref=e293] [cursor=pointer]
+        - article [ref=e295]:
+          - generic [ref=e296]:
+            - generic [ref=e297]:
+              - heading "Meeting with Accelink on Mar18" [level=3] [ref=e298]
+              - generic [ref=e299]:
+                - generic [ref=e300]: LOW
+                - generic [ref=e301]: INBOX
+                - generic [ref=e302]: Bingbing Xu
+                - generic [ref=e303]: 2026-03-18 09:59:55
+            - generic [ref=e304]:
+              - combobox [ref=e305]:
+                - option "todo" [selected]
+                - option "doing"
+                - option "done"
+              - button "Open" [ref=e306] [cursor=pointer]
+          - generic [ref=e308]:
+            - generic [ref=e309]: Abstract
+            - paragraph [ref=e310]: Calendar hold for a meeting with Accelink next week to cover team introductions, ongoing projects, potential TOSA/ROSA cooperation, and factory audit plans
+      - generic [ref=e311]:
+        - generic [ref=e312]:
+          - generic [ref=e313]:
+            - 'heading "Accelerating Innovation: Lumentum’s New Patent Incentive Program" [level=2] [ref=e314]'
+            - generic [ref=e315]:
+              - generic [ref=e316]: 1 item
+              - generic [ref=e317]: start 2026-03-17 23:00:52
+              - generic [ref=e318]: latest 2026-03-17 23:00:52
+          - button "Response" [ref=e320] [cursor=pointer]
+        - article [ref=e322]:
+          - generic [ref=e323]:
+            - generic [ref=e324]:
+              - 'heading "Accelerating Innovation: Lumentum’s New Patent Incentive Program" [level=3] [ref=e325]'
+              - generic [ref=e326]:
+                - generic [ref=e327]: LOW
+                - generic [ref=e328]: INBOX
+                - generic [ref=e329]: IP Dept
+                - generic [ref=e330]: 2026-03-17 23:00:52
+            - generic [ref=e331]:
+              - combobox [ref=e332]:
+                - option "todo" [selected]
+                - option "doing"
+                - option "done"
+              - button "Open" [ref=e333] [cursor=pointer]
+          - generic [ref=e335]:
+            - generic [ref=e336]: Abstract
+            - paragraph [ref=e337]: IP Dept announced Lumentum’s updated Patent Incentive Program effective January 1, 2026, with higher inventor rewards and a strategic focus multiplier
+      - generic [ref=e338]:
+        - generic [ref=e339]:
+          - generic [ref=e340]:
+            - 'heading "Circuit Pack-CCB Meeting: Transport Module (Design and Materials)" [level=2] [ref=e341]'
+            - generic [ref=e342]:
+              - generic [ref=e343]: 1 item
+              - generic [ref=e344]: start 2026-03-17 22:45:09
+              - generic [ref=e345]: latest 2026-03-17 22:45:09
+          - button "Response" [ref=e347] [cursor=pointer]
+        - article [ref=e349]:
+          - generic [ref=e350]:
+            - generic [ref=e351]:
+              - 'heading "RE: Circuit Pack-CCB Meeting: Transport Module (Design and Materials)" [level=3] [ref=e352]'
+              - generic [ref=e353]:
+                - generic [ref=e354]: MEDIUM
+                - generic [ref=e355]: INBOX
+                - generic [ref=e356]: Kishor Biradar
+                - generic [ref=e357]: 2026-03-17 22:45:09
+            - generic [ref=e358]:
+              - combobox [ref=e359]:
+                - option "todo" [selected]
+                - option "doing"
+                - option "done"
+              - button "Open" [ref=e360] [cursor=pointer]
+          - generic [ref=e362]:
+            - generic [ref=e363]: Abstract
+            - paragraph [ref=e364]: The CCB reviewed CCR-034314 on qualifying an alternate BELPower power supply, leaving the decision TBD pending PLM discussion and PCN/trial confirmation
+      - generic [ref=e365]:
+        - generic [ref=e366]:
+          - generic [ref=e367]:
+            - heading "Engagement Survey" [level=2] [ref=e368]
+            - generic [ref=e369]:
+              - generic [ref=e370]: 1 item
+              - generic [ref=e371]: start 2026-03-17 20:52:50
+              - generic [ref=e372]: latest 2026-03-17 20:52:50
+          - button "Response" [ref=e374] [cursor=pointer]
+        - article [ref=e376]:
+          - generic [ref=e377]:
+            - generic [ref=e378]:
+              - heading "Engagement Survey" [level=3] [ref=e379]
+              - generic [ref=e380]:
+                - generic [ref=e381]: LOW
+                - generic [ref=e382]: INBOX
+                - generic [ref=e383]: Michael Hurlston
+                - generic [ref=e384]: 2026-03-17 20:52:50
+            - generic [ref=e385]:
+              - combobox [ref=e386]:
+                - option "todo" [selected]
+                - option "doing"
+                - option "done"
+              - button "Open" [ref=e387] [cursor=pointer]
+          - generic [ref=e389]:
+            - generic [ref=e390]: Abstract
+            - paragraph [ref=e391]: Michael Hurlston thanked employees for record engagement survey participation and said managers will review and share results before companywide focus areas are announced
+      - generic [ref=e392]:
+        - generic [ref=e393]:
+          - generic [ref=e394]:
+            - 'heading "[External]:RE: Zhuque FlexSMD and Ciena 1x20 Beta Build Daily update as of Mar''17" [level=2] [ref=e395]'
+            - generic [ref=e396]:
+              - generic [ref=e397]: 1 item
+              - generic [ref=e398]: start 2026-03-17 19:28:34
+              - generic [ref=e399]: latest 2026-03-17 19:28:34
+          - button "Response" [ref=e401] [cursor=pointer]
+        - article [ref=e403]:
+          - generic [ref=e404]:
+            - generic [ref=e405]:
+              - 'heading "[External]:RE: Zhuque FlexSMD and Ciena 1x20 Beta Build Daily update as of Mar''17" [level=3] [ref=e406]'
+              - generic [ref=e407]:
+                - generic [ref=e408]: HIGH
+                - generic [ref=e409]: INBOX
+                - generic [ref=e410]: Supannee Pulsap
+                - generic [ref=e411]: 2026-03-17 19:28:34
+            - generic [ref=e412]:
+              - combobox [ref=e413]:
+                - option "todo" [selected]
+                - option "doing"
+                - option "done"
+              - button "Open" [ref=e414] [cursor=pointer]
+          - generic [ref=e416]:
+            - generic [ref=e417]: Abstract
+            - paragraph [ref=e418]: "Daily update: 20 Flex SMD blades/top assemblies and 16 Ciena 1x2 Gen2 FG/top assemblies were released; 4 Flex SMD units remain in WIP for a Mar 19 audit"
+      - generic [ref=e419]:
+        - generic [ref=e420]:
+          - generic [ref=e421]:
+            - heading "[External]:Bin sent a message" [level=2] [ref=e422]
+            - generic [ref=e423]:
+              - generic [ref=e424]: 1 item
+              - generic [ref=e425]: start 2026-03-17 18:46:10
+              - generic [ref=e426]: latest 2026-03-17 18:46:10
+          - button "Response" [ref=e428] [cursor=pointer]
+        - article [ref=e430]:
+          - generic [ref=e431]:
+            - generic [ref=e432]:
+              - heading "[External]:Bin sent a message" [level=3] [ref=e433]
+              - generic [ref=e434]:
+                - generic [ref=e435]: MEDIUM
+                - generic [ref=e436]: INBOX
+                - generic [ref=e437]: Bin Tan in Teams
+                - generic [ref=e438]: 2026-03-17 18:46:10
+            - generic [ref=e439]:
+              - combobox [ref=e440]:
+                - option "todo" [selected]
+                - option "doing"
+                - option "done"
+              - button "Open" [ref=e441] [cursor=pointer]
+          - generic [ref=e443]:
+            - generic [ref=e444]: Abstract
+            - paragraph [ref=e445]: Bin Tan sent a Teams chat message saying to use agent skills with Codex
+      - generic [ref=e446]:
+        - generic [ref=e447]:
+          - generic [ref=e448]:
+            - 'heading "REJECTED: Thomas Zeng (zen79908) has Rejected ECO ECO-144861." [level=2] [ref=e449]'
+            - generic [ref=e450]:
+              - generic [ref=e451]: 1 item
+              - generic [ref=e452]: start 2026-03-17 16:31:41
+              - generic [ref=e453]: latest 2026-03-17 16:31:41
+          - button "Response" [ref=e455] [cursor=pointer]
+        - article [ref=e457]:
+          - generic [ref=e458]:
+            - generic [ref=e459]:
+              - 'heading "REJECTED: Thomas Zeng (zen79908) has Rejected ECO ECO-144861." [level=3] [ref=e460]'
+              - generic [ref=e461]:
+                - generic [ref=e462]: MEDIUM
+                - generic [ref=e463]: INBOX
+                - generic [ref=e464]: agilep@lumentum.com
+                - generic [ref=e465]: 2026-03-17 16:31:41
+            - generic [ref=e466]:
+              - combobox [ref=e467]:
+                - option "todo" [selected]
+                - option "doing"
+                - option "done"
+              - button "Open" [ref=e468] [cursor=pointer]
+          - generic [ref=e470]:
+            - generic [ref=e471]: Abstract
+            - paragraph [ref=e472]: Thomas Zeng rejected ECO-144861 and commented that test items should be added to the loop back section
+      - generic [ref=e473]:
+        - generic [ref=e474]:
+          - generic [ref=e475]:
+            - heading "FlexSMD Beta Sample to SZN team" [level=2] [ref=e476]
+            - generic [ref=e477]:
+              - generic [ref=e478]: 1 item
+              - generic [ref=e479]: start 2026-03-17 10:12:02
+              - generic [ref=e480]: latest 2026-03-17 10:12:02
+          - button "Response" [ref=e482] [cursor=pointer]
+        - article [ref=e484]:
+          - generic [ref=e485]:
+            - generic [ref=e486]:
+              - heading "FlexSMD Beta Sample to SZN team" [level=3] [ref=e487]
+              - generic [ref=e488]:
+                - generic [ref=e489]: LOW
+                - generic [ref=e490]: INBOX
+                - generic [ref=e491]: Zhihong Fan
+                - generic [ref=e492]: 2026-03-17 10:12:02
+            - generic [ref=e493]:
+              - combobox [ref=e494]:
+                - option "todo" [selected]
+                - option "doing"
+                - option "done"
+              - button "Open" [ref=e495] [cursor=pointer]
+          - generic [ref=e497]:
+            - generic [ref=e498]: Abstract
+            - paragraph [ref=e499]: First five FlexSMD beta samples are in customs and expected at SZN this week; 2 are for oDVT, 1 for sDVT, 2 for SW, with more units ready to ship
+      - generic [ref=e500]:
+        - generic [ref=e501]:
+          - generic [ref=e502]:
+            - heading "2026 EHS Internal Audit Opening Meeting - Nanshan" [level=2] [ref=e503]
+            - generic [ref=e504]:
+              - generic [ref=e505]: 1 item
+              - generic [ref=e506]: start 2026-03-17 09:58:04
+              - generic [ref=e507]: latest 2026-03-17 09:58:04
+          - button "Response" [ref=e509] [cursor=pointer]
+        - article [ref=e511]:
+          - generic [ref=e512]:
+            - generic [ref=e513]:
+              - 'heading "RE: 2026 EHS Internal Audit Opening Meeting - Nanshan" [level=3] [ref=e514]'
+              - generic [ref=e515]:
+                - generic [ref=e516]: MEDIUM
+                - generic [ref=e517]: INBOX
+                - generic [ref=e518]: Jane Yu
+                - generic [ref=e519]: 2026-03-17 09:58:04
+            - generic [ref=e520]:
+              - combobox [ref=e521]:
+                - option "todo" [selected]
+                - option "doing"
+                - option "done"
+              - button "Open" [ref=e522] [cursor=pointer]
+          - generic [ref=e524]:
+            - generic [ref=e525]: Abstract
+            - paragraph [ref=e526]: The 2026 EHS Internal Audit is underway, with the labs audit scheduled for March 18 and staff asked to prepare according to the audit plan
+      - generic [ref=e527]:
+        - generic [ref=e528]:
+          - generic [ref=e529]:
+            - 'heading "Course Completion Reminder: EHS - China - Nanshan/Wuhan - Annual EHS Training" [level=2] [ref=e530]'
+            - generic [ref=e531]:
+              - generic [ref=e532]: 1 item
+              - generic [ref=e533]: start 2026-03-17 09:02:52
+              - generic [ref=e534]: latest 2026-03-17 09:02:52
+          - button "Response" [ref=e536] [cursor=pointer]
+        - article [ref=e538]:
+          - generic [ref=e539]:
+            - generic [ref=e540]:
+              - 'heading "Course Completion Reminder: EHS - China - Nanshan/Wuhan - Annual EHS Training" [level=3] [ref=e541]'
+              - generic [ref=e542]:
+                - generic [ref=e543]: HIGH
+                - generic [ref=e544]: INBOX
+                - generic [ref=e545]: lumentum@myworkday.com
+                - generic [ref=e546]: 2026-03-17 09:02:52
+            - generic [ref=e547]:
+              - combobox [ref=e548]:
+                - option "todo" [selected]
+                - option "doing"
+                - option "done"
+              - button "Open" [ref=e549] [cursor=pointer]
+          - generic [ref=e551]:
+            - generic [ref=e552]: Abstract
+            - paragraph [ref=e553]: Reminder that the Annual EHS Training for China Nanshan/Wuhan is assigned in Workday and must be completed as required annual refresher training
+      - generic [ref=e554]:
+        - generic [ref=e555]:
+          - generic [ref=e556]:
+            - heading "openclaw test" [level=2] [ref=e557]
+            - generic [ref=e558]:
+              - generic [ref=e559]: 1 item
+              - generic [ref=e560]: start 2026-03-16 11:19:26
+              - generic [ref=e561]: latest 2026-03-16 11:19:26
+          - button "Response" [ref=e563] [cursor=pointer]
+        - article [ref=e565]:
+          - generic [ref=e566]:
+            - generic [ref=e567]:
+              - 'heading "Fw: openclaw test" [level=3] [ref=e568]'
+              - generic [ref=e569]:
+                - generic [ref=e570]: MEDIUM
+                - generic [ref=e571]: SENT ITEMS
+                - generic [ref=e572]: Luqing Wu
+                - generic [ref=e573]: 2026-03-16 11:19:26
+            - generic [ref=e574]:
+              - combobox [ref=e575]:
+                - option "todo"
+                - option "doing" [selected]
+                - option "done"
+              - button "Open" [ref=e576] [cursor=pointer]
+          - generic [ref=e578]:
+            - generic [ref=e579]: Abstract
+            - paragraph [ref=e580]: Confirmation that the openclaw test message was received
+      - generic [ref=e581]:
+        - generic [ref=e582]:
+          - generic [ref=e583]:
+            - 'heading "[External]:RE: Nokia iRDM32 samples request" [level=2] [ref=e584]'
+            - generic [ref=e585]:
+              - generic [ref=e586]: 1 item
+              - generic [ref=e587]: start 2026-03-13 14:31:27
+              - generic [ref=e588]: latest 2026-03-13 14:31:27
+          - button "Response" [ref=e590] [cursor=pointer]
+        - article [ref=e592]:
+          - generic [ref=e593]:
+            - generic [ref=e594]:
+              - 'heading "Re: [External]:RE: Nokia iRDM32 samples request" [level=3] [ref=e595]'
+              - generic [ref=e596]:
+                - generic [ref=e597]: MEDIUM
+                - generic [ref=e598]: SENT ITEMS
+                - generic [ref=e599]: Luqing Wu
+                - generic [ref=e600]: 2026-03-13 14:31:27
+            - generic [ref=e601]:
+              - combobox [ref=e602]:
+                - option "todo"
+                - option "doing" [selected]
+                - option "done"
+              - button "Open" [ref=e603] [cursor=pointer]
+          - generic [ref=e605]:
+            - generic [ref=e606]: Abstract
+            - paragraph [ref=e607]: Lost information in the kitting BOM may be blocking progress, and the sender asked whether existing serial numbers can be added so it can move forward
+      - generic [ref=e608]:
+        - generic [ref=e609]:
+          - generic [ref=e610]:
+            - heading "LSS R&D Priority Update for FY26" [level=2] [ref=e611]
+            - generic [ref=e612]:
+              - generic [ref=e613]: 1 item
+              - generic [ref=e614]: start 2026-03-13 10:22:26
+              - generic [ref=e615]: latest 2026-03-13 10:22:26
+          - button "Response" [ref=e617] [cursor=pointer]
+        - article [ref=e619]:
+          - generic [ref=e620]:
+            - generic [ref=e621]:
+              - 'heading "Accepted: LSS R&D Priority Update for FY26" [level=3] [ref=e622]'
+              - generic [ref=e623]:
+                - generic [ref=e624]: MEDIUM
+                - generic [ref=e625]: SENT ITEMS
+                - generic [ref=e626]: Luqing Wu
+                - generic [ref=e627]: 2026-03-13 10:22:26
+            - generic [ref=e628]:
+              - combobox [ref=e629]:
+                - option "todo"
+                - option "doing" [selected]
+                - option "done"
+              - button "Open" [ref=e630] [cursor=pointer]
+          - generic [ref=e632]:
+            - generic [ref=e633]: Abstract
+            - paragraph [ref=e634]: "Accepted: LSS R&D Priority Update for FY26"

@@ -27,10 +27,39 @@ def get_sender(item) -> str:
     return sender_email or sender_name or "<unknown>"
 
 
+def get_address_entry_smtp(address_entry) -> str:
+    if address_entry is None:
+        return ""
+    smtp = str(getattr(address_entry, "Address", "") or "").strip()
+    if "@" in smtp:
+        return smtp
+    for method_name in ("GetExchangeUser", "GetExchangeDistributionList"):
+        try:
+            resolved = getattr(address_entry, method_name)()
+        except Exception:
+            resolved = None
+        if resolved is None:
+            continue
+        smtp = str(getattr(resolved, "PrimarySmtpAddress", "") or "").strip()
+        if smtp:
+            return smtp
+    return ""
+
+
 def get_sender_fields(item) -> tuple[str, str, str]:
-    sender_email = str(getattr(item, "SenderEmailAddress", "") or "")
-    sender_name = str(getattr(item, "SenderName", "") or "")
-    sender = get_sender(item)
+    sender_email = str(getattr(item, "SenderEmailAddress", "") or "").strip()
+    sender_name = str(getattr(item, "SenderName", "") or "").strip()
+    try:
+        sender_entry = getattr(item, "Sender", None)
+        smtp = get_address_entry_smtp(sender_entry)
+        if smtp:
+            sender_email = smtp
+        sender_entry_name = str(getattr(sender_entry, "Name", "") or "").strip()
+        if sender_entry_name:
+            sender_name = sender_entry_name
+    except Exception:
+        pass
+    sender = f"{sender_name} <{sender_email}>" if sender_name and sender_email else sender_email or sender_name or "<unknown>"
     return sender, sender_name, sender_email
 
 
@@ -92,15 +121,24 @@ def get_mailbox_owner() -> dict[str, str]:
     return {"email": email, "name": name}
 
 
+def localize_outlook_datetime(value):
+    if not value:
+        return None
+    if not isinstance(value, datetime):
+        return None
+    if getattr(value, "tzinfo", None) is not None:
+        value = value.replace(tzinfo=None)
+    return value.astimezone()
+
+
 def format_received(value) -> tuple[str, str]:
     if not value:
         return "<unknown>", ""
+    localized = localize_outlook_datetime(value)
+    if localized is not None:
+        return localized.strftime("%Y-%m-%d %H:%M:%S"), localized.isoformat()
     text = str(value)
-    iso_text = ""
-    try:
-        iso_text = value.isoformat()
-    except AttributeError:
-        iso_text = text
+    iso_text = text
     return text, iso_text
 
 
@@ -287,7 +325,7 @@ def fetch_messages(args: argparse.Namespace) -> list[dict]:
                 "has_attachments": bool(getattr(item, "Attachments", []).Count > 0),
             }
         )
-        if len(messages) >= args.limit:
+        if args.limit > 0 and len(messages) >= args.limit:
             break
     return messages
 

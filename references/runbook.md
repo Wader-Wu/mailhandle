@@ -16,6 +16,7 @@ This project is a standalone Windows runtime that can also be packaged as a Code
 - Runtime env template: `scripts/.env.example`
 - SQLite history design: `references/database-design.md`
 - Local DB path: `data/mailhandle.sqlite`
+- Daily backup path: `data/mailhandle.backup.sqlite`
 
 ## GitHub Release Packaging
 
@@ -24,6 +25,7 @@ Include:
 - `README.md`
 - `SKILL.md`
 - `references/`
+- `references/release-notes-next.md`
 - `scripts/`
 
 Exclude:
@@ -132,6 +134,36 @@ Useful fields in `scripts/priority_rules.json`:
 - `owner_aliases`
 - `manager_senders`
 - `greeting_terms`
+
+Notes:
+
+- `manager_senders` can match `Bin Tan`, `Bin.Tan@lumentum.com`, or `Bin Tan <Bin.Tan@lumentum.com>`
+- changing `priority_rules.json` is forward-looking; it affects future synced items and does not retroactively rescore historical rows already stored in SQLite
+
+## Release Prep
+
+Before cutting the next release:
+
+- update `references/release-notes-next.md`
+- verify Python syntax:
+
+```powershell
+Get-ChildItem scripts -Filter *.py | ForEach-Object { python -m py_compile $_.FullName }
+```
+
+- verify launcher startup:
+
+```powershell
+& ".\scripts\launch_mailhandle.ps1"
+```
+
+- confirm the startup summary exists:
+
+```powershell
+Get-Content ".\tmp\mailhandle-last-start.txt"
+```
+
+- confirm the release bundle excludes local runtime state such as `data\`, `tmp\`, `.cache\`, and local `.env` files
 
 ## Troubleshooting
 

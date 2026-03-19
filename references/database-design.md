@@ -158,11 +158,12 @@ Do not use raw subject alone as the only grouping key, because reply prefixes an
 Startup behavior:
 
 - scan the last 7 days on first run
-- on later runs, refresh incrementally from the last recorded sync end time to now
+- on later runs, refresh incrementally from the last recorded sync watermark (`until`, fallback `ended_at`) to a query upper bound captured at sync start
 - fetch summary data from the existing mail pipeline
 - insert only items whose `email_id` is not already in the database
 - keep existing `status`
 - update summary metadata if the mail is seen again and newer metadata is available
+- treat priority rules as forward-looking; changing `priority_rules.json` should affect future synced items, not retroactively rescore historical rows already stored in SQLite
 
 Update behavior:
 

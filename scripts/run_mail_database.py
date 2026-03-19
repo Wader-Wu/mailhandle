@@ -50,6 +50,14 @@ HTML_TEMPLATE = HTML_TEMPLATE.replace(
     '<div class="meta" hidden><span class="chip" id="dbPath"></span><span class="chip" id="syncState"></span></div>',
     '',
 )
+HTML_TEMPLATE = HTML_TEMPLATE.replace(
+    '<select id="statusFilter"><option value="all">All</option><option value="todo">Todo</option><option value="doing">Doing</option><option value="done">Done</option></select>',
+    '<select id="statusFilter"><option value="all_open" selected>All_Open</option><option value="all">All</option><option value="todo">Todo</option><option value="doing">Doing</option><option value="done">Done</option></select>',
+)
+HTML_TEMPLATE = HTML_TEMPLATE.replace(
+    '.item{position:relative;border:1px solid var(--line);border-radius:16px;padding:16px;background:#fff}.item:before{content:"";position:absolute;left:-18px;top:24px;width:10px;height:10px;border-radius:999px;background:var(--accent);box-shadow:0 0 0 4px rgba(15,118,110,.12)}',
+    '.item{position:relative;border:1px solid var(--line);border-radius:16px;padding:16px;background:#fff}.item-responded{background:#eef9f0;border-color:#b7d8b7}.item:before{content:"";position:absolute;left:-18px;top:24px;width:10px;height:10px;border-radius:999px;background:var(--accent);box-shadow:0 0 0 4px rgba(15,118,110,.12)}.item-responded:before{background:#52a36b;box-shadow:0 0 0 4px rgba(82,163,107,.14)}.reply-pill{background:rgba(82,163,107,.14);color:#1f6b38}.context-item.responded{background:#eef9f0;border-color:#b7d8b7}',
+)
 
 
 def configure_stdio() -> None:
@@ -63,7 +71,7 @@ def configure_stdio() -> None:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--date-preset", choices=DATE_PRESETS, default="last_7_days")
-    parser.add_argument("--limit", type=int, default=20)
+    parser.add_argument("--limit", type=int, default=0)
     parser.add_argument("--from-contains")
     parser.add_argument("--subject-contains")
     parser.add_argument("--project")
@@ -101,12 +109,13 @@ def build_summary_args(args: argparse.Namespace, *, date_preset: str | None, sin
 
 
 def sync_database(args: argparse.Namespace, *, bootstrap: bool = False) -> dict:
-    last_sync_end = mailhandle_db.get_last_sync_end()
-    if bootstrap or not last_sync_end:
-        summary_args = build_summary_args(args, date_preset=args.date_preset, since=None, until=None)
+    query_until = now_iso()
+    last_sync_watermark = mailhandle_db.get_last_sync_watermark()
+    if bootstrap or not last_sync_watermark:
+        summary_args = build_summary_args(args, date_preset=args.date_preset, since=None, until=query_until)
         mode = "bootstrap"
     else:
-        summary_args = build_summary_args(args, date_preset=None, since=last_sync_end, until=now_iso())
+        summary_args = build_summary_args(args, date_preset=None, since=last_sync_watermark, until=query_until)
         mode = "incremental"
     result = summarize_mail.build_result(summary_args)
     counts = mailhandle_db.upsert_summary(result)
@@ -141,10 +150,25 @@ def open_browser_async(url: str) -> None:
 
 
 def build_stats(items: list[dict]) -> dict[str, int]:
-    stats = {"total": len(items), "high": 0, "medium": 0, "low": 0, "todo": 0, "doing": 0, "done": 0}
+    stats = {
+        "total": len(items),
+        "inbox": 0,
+        "sent_items": 0,
+        "high": 0,
+        "medium": 0,
+        "low": 0,
+        "todo": 0,
+        "doing": 0,
+        "done": 0,
+    }
     for item in items:
         priority = str(item.get("priority") or "low")
         status = str(item.get("status") or "todo")
+        folder = str(item.get("folder") or "").strip().lower()
+        if folder == "inbox":
+            stats["inbox"] += 1
+        elif folder in {"sent", "sent items"}:
+            stats["sent_items"] += 1
         if priority in stats:
             stats[priority] += 1
         if status in stats:
@@ -158,7 +182,7 @@ def parse_item_filters(query: dict[str, list[str]]) -> dict[str, str]:
     return {
         "since": value("since"),
         "until": value("until"),
-        "status": value("status", "all"),
+        "status": value("status", "all_open"),
         "priority": value("priority", "all"),
         "search": value("search"),
     }
@@ -258,6 +282,78 @@ def request_llm_group_reply(group_context: dict, notes: str) -> str:
 
 
 APP_JS = """(function(){const token=window.MAILHANDLE_TOKEN;const el={mailboxAddress:document.getElementById(\"mailboxAddress\"),workspaceNotice:document.getElementById(\"workspaceNotice\"),dbPath:document.getElementById(\"dbPath\"),syncState:document.getElementById(\"syncState\"),lastSync:document.getElementById(\"lastSync\"),stats:document.getElementById(\"stats\"),refreshBtn:document.getElementById(\"refreshBtn\"),reloadBtn:document.getElementById(\"reloadBtn\"),searchText:document.getElementById(\"searchText\"),rangeFilter:document.getElementById(\"rangeFilter\"),priorityFilter:document.getElementById(\"priorityFilter\"),statusFilter:document.getElementById(\"statusFilter\"),groups:document.getElementById(\"groups\"),emptyState:document.getElementById(\"emptyState\"),mailTabBtn:document.getElementById(\"mailTabBtn\"),rulesTabBtn:document.getElementById(\"rulesTabBtn\"),mailPanel:document.getElementById(\"mailPanel\"),rulesPanel:document.getElementById(\"rulesPanel\"),openRulesBtn:document.getElementById(\"openRulesBtn\"),rulesFrame:document.getElementById(\"rulesFrame\"),responseModalShell:document.getElementById(\"responseModalShell\"),responseModalTitle:document.getElementById(\"responseModalTitle\"),responseModalStatus:document.getElementById(\"responseModalStatus\"),responseContext:document.getElementById(\"responseContext\"),responseNotes:document.getElementById(\"responseNotes\"),generatedReply:document.getElementById(\"generatedReply\"),generateReplyBtn:document.getElementById(\"generateReplyBtn\"),replyAllBtn:document.getElementById(\"replyAllBtn\"),closeModalBtn:document.getElementById(\"closeModalBtn\")};let data={groups:[],stats:{},db_path:\"\",last_sync_end:\"\",mailbox_address:\"\",sync_message:\"\",sync_error:false,sync_running:false,count:0};let activeGroup=null;async function requestJson(path,options){const requestOptions=Object.assign({method:\"GET\"},options||{});const url=new URL(path,window.location.origin);url.searchParams.set(\"token\",token);const headers=new Headers(requestOptions.headers||{});if(requestOptions.method!=\"GET\"&&!headers.has(\"Content-Type\")){headers.set(\"Content-Type\",\"application/json; charset=utf-8\")}requestOptions.headers=headers;const response=await fetch(url.toString(),requestOptions);const text=await response.text();let payload={};if(text){try{payload=JSON.parse(text)}catch(error){throw new Error(\"Invalid server response\")}}if(!response.ok){throw new Error(payload.error||payload.message||response.statusText||(\"HTTP \"+response.status))}return payload}function setNotice(message,isError){if(!el.workspaceNotice)return;if(message){el.workspaceNotice.hidden=false;el.workspaceNotice.textContent=message;el.workspaceNotice.classList.toggle(\"error\",!!isError)}else{el.workspaceNotice.hidden=true;el.workspaceNotice.textContent=\"\";el.workspaceNotice.classList.remove(\"error\")}}function pad2(v){return String(v).padStart(2,\"0\")}function fmt(date){return date.getFullYear()+\"-\"+pad2(date.getMonth()+1)+\"-\"+pad2(date.getDate())+\" \"+pad2(date.getHours())+\":\"+pad2(date.getMinutes())+\":\"+pad2(date.getSeconds())}function resolveRange(range){const now=new Date();let start=null,end=null;if(range===\"today\"){start=new Date(now.getFullYear(),now.getMonth(),now.getDate());end=new Date(start);end.setDate(end.getDate()+1)}else if(range===\"last_2days\"){start=new Date(now.getTime()-2*24*60*60*1000)}else if(range===\"last_7_days\"){start=new Date(now.getTime()-7*24*60*60*1000)}else if(range===\"this_month\"){start=new Date(now.getFullYear(),now.getMonth(),1)}else if(range===\"last_month\"){start=new Date(now.getFullYear(),now.getMonth()-1,1);end=new Date(now.getFullYear(),now.getMonth(),1)}return{since:start?fmt(start):\"\",until:end?fmt(end):\"\"}}function buildItemQuery(){const params=new URLSearchParams();const range=resolveRange(el.rangeFilter.value);if(range.since)params.set(\"since\",range.since);if(range.until)params.set(\"until\",range.until);if(el.statusFilter.value!==\"all\")params.set(\"status\",el.statusFilter.value);if(el.priorityFilter.value!==\"all\")params.set(\"priority\",el.priorityFilter.value);const search=el.searchText.value.trim();if(search)params.set(\"search\",search);return params.toString()}async function loadData(){if(el.syncState)el.syncState.textContent=\"Loading...\";try{const query=buildItemQuery();data=await requestJson(\"/api/items\"+(query?\"?\"+query:\"\"),{method:\"GET\"});render();el.mailboxAddress.textContent=data.mailbox_address||\"Mailbox\";el.lastSync.textContent=data.last_sync_end?\"Last sync: \"+data.last_sync_end:\"Last sync: none\";setNotice(data.sync_message||\"\",data.sync_error);if(el.dbPath)el.dbPath.textContent=data.db_path||\"\";if(el.syncState)el.syncState.textContent=\"\"}catch(error){setNotice(\"Workspace load failed: \"+error.message,true);if(el.syncState)el.syncState.textContent=\"Load failed: \"+error.message}}async function refreshNow(){setNotice(\"Refreshing from last sync...\",false);if(el.syncState)el.syncState.textContent=\"Refreshing from last sync...\";try{const payload=await requestJson(\"/api/sync\",{method:\"POST\",body:\"{}\"});if(el.syncState)el.syncState.textContent=payload.message||\"Sync complete\";await loadData()}catch(error){setNotice(\"Refresh failed. Open classic Outlook, wait for sync to finish, and try again. Details: \"+error.message,true);if(el.syncState)el.syncState.textContent=\"Refresh failed: \"+error.message}}async function saveStatus(emailId,status,notes){await requestJson(\"/api/item/\"+encodeURIComponent(emailId),{method:\"POST\",body:JSON.stringify({status:status,notes:notes||\"\"})})}async function openMail(emailId){try{await requestJson(\"/api/open/\"+encodeURIComponent(emailId),{method:\"POST\",body:\"{}\"});if(el.syncState)el.syncState.textContent=\"Opened mail \"+emailId}catch(error){if(el.syncState)el.syncState.textContent=\"Open failed: \"+error.message}}function pill(text,extraClass){const span=document.createElement(\"span\");span.className=\"pill\"+(extraClass?\" \"+extraClass:\"\");span.textContent=text;return span}function renderStats(){const stats=data.stats||{};const items=[[\"Total\",stats.total||0],[\"High\",stats.high||0],[\"Medium\",stats.medium||0],[\"Low\",stats.low||0],[\"Todo\",stats.todo||0],[\"Doing\",stats.doing||0],[\"Done\",stats.done||0]];el.stats.replaceChildren();items.forEach(function(entry){const box=document.createElement(\"div\");box.className=\"stat\";const strong=document.createElement(\"strong\");strong.textContent=String(entry[1]);const span=document.createElement(\"span\");span.textContent=entry[0];box.append(strong,span);el.stats.appendChild(box)})}function panel(labelText,bodyNodeOrText){const box=document.createElement(\"div\");box.className=\"box\";const label=document.createElement(\"span\");label.className=\"label\";label.textContent=labelText;box.appendChild(label);if(typeof bodyNodeOrText===\"string\"){const text=document.createElement(\"p\");text.className=\"text\";text.textContent=bodyNodeOrText||\"-\";box.appendChild(text)}else{box.appendChild(bodyNodeOrText)}return box}function renderStatusControl(item){const statusSelect=document.createElement(\"select\");statusSelect.className=\"item-status\";[\"todo\",\"doing\",\"done\"].forEach(function(value){const option=document.createElement(\"option\");option.value=value;option.textContent=value;if((item.status||\"todo\")===value)option.selected=true;statusSelect.appendChild(option)});statusSelect.addEventListener(\"change\",function(){saveStatus(item.email_id,statusSelect.value,item.notes||\"\").catch(function(error){if(el.syncState)el.syncState.textContent=\"Save failed: \"+error.message})});return statusSelect}function renderItem(item){const card=document.createElement(\"article\");card.className=\"item\";card.setAttribute(\"data-email-id\",item.email_id);const top=document.createElement(\"div\");top.className=\"item-top\";const info=document.createElement(\"div\");const title=document.createElement(\"h3\");title.className=\"title\";title.textContent=item.subject||\"(no subject)\";const pills=document.createElement(\"div\");pills.className=\"pills\";pills.appendChild(pill((item.priority||\"unknown\").toUpperCase(),\"prio-\"+(item.priority||\"low\")));pills.appendChild(pill(item.from_name||item.from||\"Unknown sender\",\"\"));pills.appendChild(pill(item.received||\"-\",\"\"));if(item.responded)pills.appendChild(pill(\"replied\",\"\"));info.append(title,pills);const controls=document.createElement(\"div\");controls.className=\"item-controls\";controls.appendChild(renderStatusControl(item));const openBtn=document.createElement(\"button\");openBtn.type=\"button\";openBtn.className=\"secondary item-open\";openBtn.textContent=\"Open\";openBtn.addEventListener(\"click\",function(){openMail(item.email_id)});controls.appendChild(openBtn);top.append(info,controls);const body=document.createElement(\"div\");body.className=\"item-body\";body.appendChild(panel(\"Abstract\",item.abstract||\"-\"));card.append(top,body);return card}function renderGroup(group){const section=document.createElement(\"section\");section.className=\"panel group\";const head=document.createElement(\"div\");head.className=\"group-head\";const info=document.createElement(\"div\");const title=document.createElement(\"h2\");title.textContent=group.title||\"(no subject)\";const meta=document.createElement(\"div\");meta.className=\"group-meta\";meta.appendChild(pill(group.count+\" item\"+(group.count===1?\"\":\"s\"),\"\"));if(group.oldest_received)meta.appendChild(pill(\"start \"+group.oldest_received,\"\"));if(group.latest_received)meta.appendChild(pill(\"latest \"+group.latest_received,\"\"));info.append(title,meta);const actions=document.createElement(\"div\");const responseBtn=document.createElement(\"button\");responseBtn.type=\"button\";responseBtn.textContent=\"Response\";responseBtn.addEventListener(\"click\",function(){openResponseModal(group.group_key,group.title||\"(no subject)\")});actions.appendChild(responseBtn);head.append(info,actions);const timeline=document.createElement(\"div\");timeline.className=\"timeline\";(group.items||[]).forEach(function(item){timeline.appendChild(renderItem(item))});section.append(head,timeline);return section}function render(){renderStats();const groups=(data.groups||[]).filter(function(group){return Array.isArray(group.items)&&group.items.length});el.groups.replaceChildren();el.emptyState.hidden=groups.length!==0;groups.forEach(function(group){el.groups.appendChild(renderGroup(group))})}function setTab(active){const mailActive=active===\"mail\";el.mailTabBtn.classList.toggle(\"active\",mailActive);el.rulesTabBtn.classList.toggle(\"active\",!mailActive);el.mailPanel.classList.toggle(\"active\",mailActive);el.rulesPanel.classList.toggle(\"active\",!mailActive)}function closeResponseModal(){activeGroup=null;el.responseModalShell.classList.remove(\"open\");el.responseModalShell.setAttribute(\"aria-hidden\",\"true\");el.responseContext.replaceChildren();el.responseNotes.value=\"\";el.generatedReply.value=\"\";el.replyAllBtn.disabled=true;el.responseModalStatus.textContent=\"Load a thread to prepare a reply.\"}function renderResponseContext(group){el.responseContext.replaceChildren();(group.items||[]).forEach(function(item){const node=document.createElement(\"div\");node.className=\"context-item\";const strong=document.createElement(\"strong\");strong.textContent=item.received+\" | \"+item.from;const subject=document.createElement(\"span\");subject.textContent=item.subject||\"(no subject)\";const abstract=document.createElement(\"span\");abstract.textContent=item.abstract||item.body||\"-\";node.append(strong,subject,abstract);el.responseContext.appendChild(node)})}async function openResponseModal(groupKey,title){el.responseModalTitle.textContent=title;el.responseModalStatus.textContent=\"Loading thread context...\";el.responseContext.replaceChildren();el.responseNotes.value=\"\";el.generatedReply.value=\"\";el.replyAllBtn.disabled=true;el.responseModalShell.classList.add(\"open\");el.responseModalShell.setAttribute(\"aria-hidden\",\"false\");try{const payload=await requestJson(\"/api/group/\"+encodeURIComponent(groupKey),{method:\"GET\"});activeGroup=payload.group;el.responseModalStatus.textContent=\"Thread loaded. Add notes and generate a reply draft.\";renderResponseContext(payload.group)}catch(error){el.responseModalStatus.textContent=\"Failed to load thread: \"+error.message}}async function generateReply(){if(!activeGroup)return;el.responseModalStatus.textContent=\"Generating reply draft...\";el.generateReplyBtn.disabled=true;try{const payload=await requestJson(\"/api/group/\"+encodeURIComponent(activeGroup.group_key)+\"/draft\",{method:\"POST\",body:JSON.stringify({notes:el.responseNotes.value})});el.generatedReply.value=payload.draft||\"\";el.replyAllBtn.disabled=!el.generatedReply.value.trim();el.responseModalStatus.textContent=\"Draft ready. Review it, then use Response to open Reply All in Outlook.\"}catch(error){el.responseModalStatus.textContent=\"Draft generation failed: \"+error.message}finally{el.generateReplyBtn.disabled=false}}async function composeReplyAll(){if(!activeGroup)return;const draft=el.generatedReply.value.trim();if(!draft)return;el.responseModalStatus.textContent=\"Opening Reply All in Outlook...\";try{await requestJson(\"/api/group/\"+encodeURIComponent(activeGroup.group_key)+\"/reply\",{method:\"POST\",body:JSON.stringify({draft:draft})});el.responseModalStatus.textContent=\"Reply All opened in Outlook with the draft pasted in front of the original thread.\"}catch(error){el.responseModalStatus.textContent=\"Failed to open Reply All: \"+error.message}}el.refreshBtn.addEventListener(\"click\",refreshNow);el.reloadBtn.addEventListener(\"click\",loadData);el.searchText.addEventListener(\"input\",loadData);el.rangeFilter.addEventListener(\"change\",loadData);el.priorityFilter.addEventListener(\"change\",loadData);el.statusFilter.addEventListener(\"change\",loadData);el.mailTabBtn.addEventListener(\"click\",function(){setTab(\"mail\")});el.rulesTabBtn.addEventListener(\"click\",function(){setTab(\"rules\")});el.openRulesBtn.addEventListener(\"click\",function(){el.rulesFrame.src=\"/priority-editor?token=\"+encodeURIComponent(token);setTab(\"rules\")});el.closeModalBtn.addEventListener(\"click\",closeResponseModal);el.generateReplyBtn.addEventListener(\"click\",generateReply);el.replyAllBtn.addEventListener(\"click\",composeReplyAll);el.responseModalShell.addEventListener(\"click\",function(event){if(event.target===el.responseModalShell)closeResponseModal()});loadData()})();"""
+APP_JS = APP_JS.replace(
+    'function fmt(date){return date.getFullYear()+\"-\"+pad2(date.getMonth()+1)+\"-\"+pad2(date.getDate())+\" \"+pad2(date.getHours())+\":\"+pad2(date.getMinutes())+\":\"+pad2(date.getSeconds())}function resolveRange(range){',
+    'function fmt(date){return date.getFullYear()+\"-\"+pad2(date.getMonth()+1)+\"-\"+pad2(date.getDate())+\" \"+pad2(date.getHours())+\":\"+pad2(date.getMinutes())+\":\"+pad2(date.getSeconds())}function parseTimestamp(value){const text=String(value||\"\").trim();if(!text)return null;const normalized=text.replace(/\\.(\\d{3})\\d+(?=(Z|[+-]\\d\\d:\\d\\d)$)/,\".$1\");const date=new Date(normalized);return Number.isNaN(date.getTime())?null:date}function formatLocalTimestamp(value){const text=String(value||\"\").trim();if(!text)return \"-\";const date=parseTimestamp(text);if(!date)return text;return date.getFullYear()+\"-\"+pad2(date.getMonth()+1)+\"-\"+pad2(date.getDate())+\" \"+pad2(date.getHours())+\":\"+pad2(date.getMinutes())+\":\"+pad2(date.getSeconds())}function resolveRange(range){',
+)
+APP_JS = APP_JS.replace(
+    'el.lastSync.textContent=data.last_sync_end?\"Last sync: \"+data.last_sync_end:\"Last sync: none\";',
+    'el.lastSync.textContent=data.last_sync_end?\"Last sync: \"+formatLocalTimestamp(data.last_sync_end):\"Last sync: none\";',
+)
+APP_JS = APP_JS.replace(
+    'pills.appendChild(pill(item.received||\"-\",\"\"));',
+    'pills.appendChild(pill(formatLocalTimestamp(item.received),\"\"));',
+)
+APP_JS = APP_JS.replace(
+    'pills.appendChild(pill(item.from_name||item.from||\"Unknown sender\",\"\"));pills.appendChild(pill(formatLocalTimestamp(item.received),\"\"));',
+    'pills.appendChild(pill((item.folder||\"Mailbox\").toUpperCase(),\"\"));pills.appendChild(pill(item.from_name||item.from||\"Unknown sender\",\"\"));pills.appendChild(pill(formatLocalTimestamp(item.received),\"\"));',
+)
+APP_JS = APP_JS.replace(
+    'if(group.oldest_received)meta.appendChild(pill(\"start \"+group.oldest_received,\"\"));if(group.latest_received)meta.appendChild(pill(\"latest \"+group.latest_received,\"\"));',
+    'if(group.oldest_received)meta.appendChild(pill(\"start \"+formatLocalTimestamp(group.oldest_received),\"\"));if(group.latest_received)meta.appendChild(pill(\"latest \"+formatLocalTimestamp(group.latest_received),\"\"));',
+)
+APP_JS = APP_JS.replace(
+    'strong.textContent=item.received+\" | \"+item.from;',
+    'strong.textContent=formatLocalTimestamp(item.received)+\" | \"+(item.folder||\"Mailbox\")+\" | \"+item.from;',
+)
+APP_JS = APP_JS.replace(
+    'if(el.statusFilter.value!==\"all\")params.set(\"status\",el.statusFilter.value);',
+    'if(el.statusFilter.value!==\"all_open\")params.set(\"status\",el.statusFilter.value);',
+)
+APP_JS = APP_JS.replace(
+    'const items=[[\"Total\",stats.total||0],[\"High\",stats.high||0],[\"Medium\",stats.medium||0],[\"Low\",stats.low||0],[\"Todo\",stats.todo||0],[\"Doing\",stats.doing||0],[\"Done\",stats.done||0]];',
+    'const items=[[\"Inbox\",stats.inbox||0],[\"Sent Items\",stats.sent_items||0],[\"High\",stats.high||0],[\"Medium\",stats.medium||0],[\"Low\",stats.low||0],[\"Todo\",stats.todo||0],[\"Doing\",stats.doing||0],[\"Done\",stats.done||0]];',
+)
+APP_JS = APP_JS.replace(
+    'if(item.responded)pills.appendChild(pill(\"replied\",\"\"));',
+    'if(item.responded)pills.appendChild(pill(\"replied\",\"reply-pill\"));',
+)
+APP_JS = APP_JS.replace(
+    'function renderItem(item){const card=document.createElement(\"article\");card.className=\"item\";card.setAttribute(\"data-email-id\",item.email_id);',
+    'function renderItem(item){const card=document.createElement(\"article\");const folderName=String(item.folder||\"\").toLowerCase();const respondedItem=folderName===\"sent items\"||folderName===\"sent\";card.className=\"item\"+(respondedItem?\" item-responded\":\"\");card.setAttribute(\"data-email-id\",item.email_id);',
+)
+APP_JS = APP_JS.replace(
+    'function renderResponseContext(group){el.responseContext.replaceChildren();(group.items||[]).forEach(function(item){const node=document.createElement(\"div\");node.className=\"context-item\";',
+    'function renderResponseContext(group){el.responseContext.replaceChildren();(group.items||[]).forEach(function(item){const node=document.createElement(\"div\");const folderName=String(item.folder||\"\").toLowerCase();const respondedItem=folderName===\"sent items\"||folderName===\"sent\";node.className=\"context-item\"+(respondedItem?\" responded\":\"\");',
+)
+APP_JS = APP_JS.replace(
+    'async function saveStatus(emailId,status,notes){await requestJson(\"/api/item/\"+encodeURIComponent(emailId),{method:\"POST\",body:JSON.stringify({status:status,notes:notes||\"\"})})}',
+    'async function saveStatus(emailId,status,notes){await requestJson(\"/api/item/\"+encodeURIComponent(emailId),{method:\"POST\",body:JSON.stringify({status:status,notes:notes||\"\"})});await loadData()}',
+)
+APP_JS = APP_JS.replace(
+    'let activeGroup=null;',
+    'let activeGroup=null;let syncPollTimer=null;let noticeTimer=null;let dismissedSyncMessage=\"\";',
+)
+APP_JS = APP_JS.replace(
+    'function setNotice(message,isError){if(!el.workspaceNotice)return;if(message){el.workspaceNotice.hidden=false;el.workspaceNotice.textContent=message;el.workspaceNotice.classList.toggle(\"error\",!!isError)}else{el.workspaceNotice.hidden=true;el.workspaceNotice.textContent=\"\";el.workspaceNotice.classList.remove(\"error\")}}',
+    'function setNotice(message,isError){if(!el.workspaceNotice)return;if(message){el.workspaceNotice.hidden=false;el.workspaceNotice.textContent=message;el.workspaceNotice.classList.toggle(\"error\",!!isError)}else{el.workspaceNotice.hidden=true;el.workspaceNotice.textContent=\"\";el.workspaceNotice.classList.remove(\"error\")}}function clearSyncPoll(){if(syncPollTimer){window.clearTimeout(syncPollTimer);syncPollTimer=null}}function scheduleSyncPoll(delay){clearSyncPoll();syncPollTimer=window.setTimeout(function(){loadData()},delay||1500)}function clearNoticeTimer(){if(noticeTimer){window.clearTimeout(noticeTimer);noticeTimer=null}}function updateSyncNotice(){const message=String(data.sync_message||\"\");if(data.sync_running){dismissedSyncMessage=\"\";clearNoticeTimer();setNotice(message||\"Starting sync...\",false);scheduleSyncPoll(1500);return}clearSyncPoll();if(data.sync_error){dismissedSyncMessage=\"\";clearNoticeTimer();setNotice(message,true);return}if(!message){dismissedSyncMessage=\"\";clearNoticeTimer();setNotice(\"\",false);return}if(dismissedSyncMessage===message){setNotice(\"\",false);return}setNotice(message,false);clearNoticeTimer();noticeTimer=window.setTimeout(function(){dismissedSyncMessage=message;setNotice(\"\",false)},4000)}',
+)
+APP_JS = APP_JS.replace(
+    'async function loadData(){if(el.syncState)el.syncState.textContent=\"Loading...\";try{const query=buildItemQuery();data=await requestJson(\"/api/items\"+(query?\"?\"+query:\"\"),{method:\"GET\"});render();el.mailboxAddress.textContent=data.mailbox_address||\"Mailbox\";el.lastSync.textContent=data.last_sync_end?\"Last sync: \"+formatLocalTimestamp(data.last_sync_end):\"Last sync: none\";setNotice(data.sync_message||\"\",data.sync_error);if(el.dbPath)el.dbPath.textContent=data.db_path||\"\";if(el.syncState)el.syncState.textContent=\"\"}catch(error){setNotice(\"Workspace load failed: \"+error.message,true);if(el.syncState)el.syncState.textContent=\"Load failed: \"+error.message}}',
+    'async function loadData(){if(el.syncState)el.syncState.textContent=\"Loading...\";try{const query=buildItemQuery();data=await requestJson(\"/api/items\"+(query?\"?\"+query:\"\"),{method:\"GET\"});render();el.mailboxAddress.textContent=data.mailbox_address||\"Mailbox\";el.lastSync.textContent=data.last_sync_end?\"Last sync: \"+formatLocalTimestamp(data.last_sync_end):\"Last sync: none\";updateSyncNotice();if(el.dbPath)el.dbPath.textContent=data.db_path||\"\";if(el.syncState)el.syncState.textContent=\"\"}catch(error){clearSyncPoll();clearNoticeTimer();setNotice(\"Workspace load failed: \"+error.message,true);if(el.syncState)el.syncState.textContent=\"Load failed: \"+error.message}}',
+)
+APP_JS = APP_JS.replace(
+    'async function refreshNow(){setNotice(\"Refreshing from last sync...\",false);if(el.syncState)el.syncState.textContent=\"Refreshing from last sync...\";try{const payload=await requestJson(\"/api/sync\",{method:\"POST\",body:\"{}\"});if(el.syncState)el.syncState.textContent=payload.message||\"Sync complete\";await loadData()}catch(error){setNotice(\"Refresh failed. Open classic Outlook, wait for sync to finish, and try again. Details: \"+error.message,true);if(el.syncState)el.syncState.textContent=\"Refresh failed: \"+error.message}}',
+    'async function refreshNow(){dismissedSyncMessage=\"\";clearNoticeTimer();setNotice(\"Refreshing from last sync...\",false);if(el.syncState)el.syncState.textContent=\"Refreshing from last sync...\";try{const payload=await requestJson(\"/api/sync\",{method:\"POST\",body:\"{}\"});if(el.syncState)el.syncState.textContent=payload.message||\"Sync complete\";await loadData()}catch(error){setNotice(\"Refresh failed. Open classic Outlook, wait for sync to finish, and try again. Details: \"+error.message,true);if(el.syncState)el.syncState.textContent=\"Refresh failed: \"+error.message}}',
+)
+APP_JS = APP_JS.replace(
+    'const abstract=document.createElement(\"span\");abstract.textContent=item.abstract||item.body||\"-\";node.append(strong,subject,abstract);',
+    'const abstract=document.createElement(\"span\");abstract.textContent=item.body||item.abstract||\"-\";if(item.body_warning){const warning=document.createElement(\"span\");warning.textContent=item.body_warning;node.append(strong,subject,abstract,warning)}else{node.append(strong,subject,abstract)}',
+)
+APP_JS = APP_JS.replace(
+    'try{const payload=await requestJson(\"/api/group/\"+encodeURIComponent(groupKey),{method:\"GET\"});activeGroup=payload.group;el.responseModalStatus.textContent=\"Thread loaded. Add notes and generate a reply draft.\";renderResponseContext(payload.group)}catch(error){el.responseModalStatus.textContent=\"Failed to load thread: \"+error.message}}',
+    'try{const payload=await requestJson(\"/api/group/\"+encodeURIComponent(groupKey),{method:\"GET\"});activeGroup=payload.group;const defaultStatus=\"Thread loaded. Add notes and generate a reply draft.\";const warnings=Array.isArray(payload.group.warnings)?payload.group.warnings:[];el.responseModalStatus.textContent=warnings.length?defaultStatus+\" \"+warnings.join(\" \"):defaultStatus;renderResponseContext(payload.group)}catch(error){el.responseModalStatus.textContent=\"Failed to load thread: \"+error.message}}',
+)
 
 
 
@@ -419,11 +515,7 @@ class RequestHandler(BaseHTTPRequestHandler):
             group_key = unquote(path[len("/api/group/") : -len("/reply")])
             try:
                 payload = self._read_json()
-                group = mailhandle_db.get_group(group_key)
-                latest_email_id = str(group.get("latest_email_id") or "")
-                if not latest_email_id:
-                    raise KeyError(group_key)
-                mailhandle_db.open_reply_all(latest_email_id, str(payload.get("draft") or ""))
+                latest_email_id = mailhandle_db.open_group_reply_all(group_key, str(payload.get("draft") or ""))
                 self._send_json({"ok": True, "email_id": latest_email_id})
             except Exception as exc:
                 self._send_json({"error": str(exc)}, status=HTTPStatus.BAD_REQUEST)

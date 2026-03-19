@@ -1,0 +1,68 @@
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e5]: Mailhandle workspace
+      - generic [ref=e6]:
+        - generic [ref=e7]: Mock Mailbox
+        - generic [ref=e8]: "Last sync: 2026-03-19 10:30:00"
+    - generic [ref=e10]:
+      - generic [ref=e81]:
+        - strong [ref=e82]: "0"
+        - generic [ref=e83]: Inbox
+      - generic [ref=e84]:
+        - strong [ref=e85]: "0"
+        - generic [ref=e86]: Sent Items
+      - generic [ref=e87]:
+        - strong [ref=e88]: "0"
+        - generic [ref=e89]: High
+      - generic [ref=e90]:
+        - strong [ref=e91]: "0"
+        - generic [ref=e92]: Medium
+      - generic [ref=e93]:
+        - strong [ref=e94]: "0"
+        - generic [ref=e95]: Low
+      - generic [ref=e96]:
+        - strong [ref=e97]: "0"
+        - generic [ref=e98]: Todo
+      - generic [ref=e99]:
+        - strong [ref=e100]: "0"
+        - generic [ref=e101]: Doing
+      - generic [ref=e102]:
+        - strong [ref=e103]: "0"
+        - generic [ref=e104]: Done
+    - generic [ref=e35]:
+      - button "Mailbox" [ref=e36] [cursor=pointer]
+      - button "Priority rules" [ref=e37] [cursor=pointer]
+  - generic [ref=e38]:
+    - generic [ref=e40]:
+      - button "Refresh from last sync" [ref=e41] [cursor=pointer]
+      - button "Reload view" [ref=e42] [cursor=pointer]
+    - generic [ref=e43]:
+      - generic [ref=e44]:
+        - generic [ref=e45]: Search
+        - searchbox "Search" [ref=e46]
+      - generic [ref=e47]:
+        - generic [ref=e48]: Time range
+        - combobox "Time range" [ref=e49]:
+          - option "All"
+          - option "Today"
+          - option "Last 2 days"
+          - option "Last 7 days" [selected]
+          - option "This month"
+          - option "Last month"
+      - generic [ref=e50]:
+        - generic [ref=e51]: Priority
+        - combobox "Priority" [ref=e52]:
+          - option "All" [selected]
+          - option "High"
+          - option "Medium"
+          - option "Low"
+      - generic [ref=e53]:
+        - generic [ref=e54]: Status
+        - combobox "Status" [ref=e55]:
+          - option "All_Open" [selected]
+          - option "All"
+          - option "Todo"
+          - option "Doing"
+          - option "Done"
+    - generic [ref=e56]: No matching items.
