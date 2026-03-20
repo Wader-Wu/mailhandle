@@ -12,6 +12,8 @@ from pathlib import Path
 PRIORITY_ORDER = {"low": 0, "medium": 1, "high": 2}
 DEFAULT_SENT_PRIORITY = "medium"
 DEFAULT_SENT_STATUS = "doing"
+DATE_PRESET_CHOICES = ["today", "yesterday", "last_1day", "last_2days", "last_7_days", "this_month", "last_month"]
+DEFAULT_SYNC_PERIOD = "last_1day"
 PROJECT_KEYWORDS = {
     "zhuque": ["zhuque"],
     "nokia": ["nokia"],
@@ -58,7 +60,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--project")
     parser.add_argument(
         "--date-preset",
-        choices=["today", "yesterday", "last_2days", "last_7_days", "this_month", "last_month"],
+        choices=DATE_PRESET_CHOICES,
     )
     parser.add_argument("--since")
     parser.add_argument("--until")
@@ -73,6 +75,21 @@ def parse_args() -> argparse.Namespace:
 
 def load_priority_rules() -> dict:
     return json.loads(RULES_FILE.read_text(encoding="utf-8"))
+
+
+def normalize_date_preset(value: str) -> str:
+    text = str(value or "").strip().lower()
+    if text in DATE_PRESET_CHOICES:
+        return text
+    return DEFAULT_SYNC_PERIOD
+
+
+def get_default_sync_period() -> str:
+    try:
+        config = load_priority_rules()
+    except Exception:
+        return DEFAULT_SYNC_PERIOD
+    return normalize_date_preset(str(config.get("default_sync_period") or DEFAULT_SYNC_PERIOD))
 
 
 def get_mail_owner() -> dict[str, str]:
@@ -907,28 +924,6 @@ def build_group_summary(message: dict, collapsed_count: int) -> str:
     return f"1 email from {sender_name} about '{subject}'. Summary: {abstract}"
 
 
-def apply_attention_boost(
-    priority: str,
-    reasons: list[str],
-    attention_flags: list[str],
-    rules_config: dict,
-) -> tuple[str, list[str]]:
-    if not attention_flags:
-        return priority, reasons
-    if not rules_config.get("boost_owner_attention", True):
-        return priority, reasons
-
-    boosted = priority
-    if any(flag in attention_flags for flag in ["owner_in_to", "owner_email_mentioned", "owner_name_mentioned", "owner_tagged"]):
-        if PRIORITY_ORDER.get(boosted, -1) < PRIORITY_ORDER["high"]:
-            boosted = "high"
-        reasons = reasons + ["attention:owner_direct"]
-    elif "owner_in_cc" in attention_flags and PRIORITY_ORDER.get(boosted, -1) < PRIORITY_ORDER["medium"]:
-        boosted = "medium"
-        reasons = reasons + ["attention:owner_cc"]
-    return boosted, reasons
-
-
 def build_todo(
     message: dict,
     priority: str,
@@ -941,9 +936,6 @@ def build_todo(
     conversation_topic = message.get("conversation_topic", "") or ""
     attention_flags = message.get("_attention_flags") or get_attention_flags_with_rules(
         message, owner, rules_config
-    )
-    priority, reasons = apply_attention_boost(
-        priority, reasons, attention_flags, rules_config
     )
     response_match = message.get("_response_match")
     responded = response_match is not None

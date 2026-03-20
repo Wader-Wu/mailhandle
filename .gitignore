@@ -1,10 +1,12 @@
 # Local runtime artifacts
 data/
 .cache/
+.playwright-cli/
 records/
 sessions/
 tmp/
 log/
+dist/
 .sandbox/
 .sandbox-bin/
 

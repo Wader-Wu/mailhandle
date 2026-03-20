@@ -37,7 +37,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--subject-contains")
     parser.add_argument(
         "--date-preset",
-        choices=["today", "last_2days", "last_7_days", "this_month", "last_month"],
+        choices=["today", "last_1day", "last_2days", "last_7_days", "this_month", "last_month"],
     )
     parser.add_argument("--since")
     parser.add_argument("--until")

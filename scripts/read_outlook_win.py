@@ -185,6 +185,8 @@ def get_date_bounds(date_preset: str, since: str | None, until: str | None):
     if date_preset == "today":
         start = now.replace(hour=0, minute=0, second=0, microsecond=0)
         end = start + timedelta(days=1)
+    elif date_preset == "last_1day":
+        start = now - timedelta(days=1)
     elif date_preset == "last_2days":
         start = now - timedelta(days=2)
     elif date_preset == "last_7_days":
@@ -356,7 +358,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--subject-contains")
     parser.add_argument(
         "--date-preset",
-        choices=["today", "last_2days", "last_7_days", "this_month", "last_month"],
+        choices=["today", "last_1day", "last_2days", "last_7_days", "this_month", "last_month"],
     )
     parser.add_argument("--since")
     parser.add_argument("--until")

@@ -422,6 +422,18 @@ HTML_PAGE = """<!DOCTYPE html>
           <p class="group-note">These top-level settings control default behavior before individual rules are applied.</p>
           <div class="fields">
             <div class="field">
+              <label for="defaultSyncPeriod">Default sync period</label>
+              <select id="defaultSyncPeriod">
+                <option value="today">today</option>
+                <option value="last_1day">last_1day</option>
+                <option value="last_2days">last_2days</option>
+                <option value="last_7_days">last_7_days</option>
+                <option value="this_month">this_month</option>
+                <option value="last_month">last_month</option>
+              </select>
+              <div class="hint">Used as the startup sync window and the initial mailbox time-range filter.</div>
+            </div>
+            <div class="field">
               <label for="defaultPriority">Default priority</label>
               <select id="defaultPriority">
                 <option value="high">high</option>
@@ -456,13 +468,6 @@ HTML_PAGE = """<!DOCTYPE html>
               <div class="toggle">
                 <input id="collapseSimilar" type="checkbox">
                 <span>Group similar threads into a single todo item</span>
-              </div>
-            </div>
-            <div class="field">
-              <label>Boost owner attention</label>
-              <div class="toggle">
-                <input id="boostOwnerAttention" type="checkbox">
-                <span>Apply the owner-attention boost in addition to explicit rules</span>
               </div>
             </div>
           </div>
@@ -574,13 +579,13 @@ HTML_PAGE = """<!DOCTYPE html>
     const ruleTemplate = document.getElementById("ruleTemplate");
 
     const form = {
+      defaultSyncPeriod: document.getElementById("defaultSyncPeriod"),
       defaultPriority: document.getElementById("defaultPriority"),
       ownerAliases: document.getElementById("ownerAliases"),
       managerSenders: document.getElementById("managerSenders"),
       greetingTerms: document.getElementById("greetingTerms"),
       suppressNotifications: document.getElementById("suppressNotifications"),
-      collapseSimilar: document.getElementById("collapseSimilar"),
-      boostOwnerAttention: document.getElementById("boostOwnerAttention")
+      collapseSimilar: document.getElementById("collapseSimilar")
     };
 
     document.getElementById("reloadBtn").addEventListener("click", loadRules);
@@ -652,13 +657,13 @@ HTML_PAGE = """<!DOCTYPE html>
     }
 
     function fillForm(rulesConfig) {
+      form.defaultSyncPeriod.value = rulesConfig.default_sync_period || "last_1day";
       form.defaultPriority.value = rulesConfig.default_priority || "low";
       form.ownerAliases.value = joinLines(rulesConfig.owner_aliases || []);
       form.managerSenders.value = joinLines(rulesConfig.manager_senders || []);
       form.greetingTerms.value = joinLines(rulesConfig.greeting_terms || []);
       form.suppressNotifications.checked = !!rulesConfig.suppress_low_priority_notifications;
       form.collapseSimilar.checked = !!rulesConfig.collapse_similar_emails;
-      form.boostOwnerAttention.checked = !!rulesConfig.boost_owner_attention;
 
       rulesListEl.replaceChildren();
       (rulesConfig.rules || []).forEach((rule) => addRuleCard(rule));
@@ -667,10 +672,10 @@ HTML_PAGE = """<!DOCTYPE html>
 
     function readForm() {
       return {
+        default_sync_period: form.defaultSyncPeriod.value,
         default_priority: form.defaultPriority.value,
         suppress_low_priority_notifications: form.suppressNotifications.checked,
         collapse_similar_emails: form.collapseSimilar.checked,
-        boost_owner_attention: form.boostOwnerAttention.checked,
         owner_aliases: splitLines(form.ownerAliases.value),
         manager_senders: splitLines(form.managerSenders.value),
         greeting_terms: splitLines(form.greetingTerms.value),

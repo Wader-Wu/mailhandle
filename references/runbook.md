@@ -46,7 +46,36 @@ Exclude:
 - `state_*.sqlite*`
 - any local `.env` file
 
+Recommended release outputs:
+
+- `mailhandle-<version>-source.zip`
+- `mailhandle-<version>-windows-portable.zip`
+
+The portable zip should include a bundled Windows Python runtime at `runtime\python\python.exe`. The launcher now auto-detects that path before falling back to `.env` or `python` on `PATH`.
+
 ## Wrapper Usage
+
+Recommended first-time Windows setup for a new user:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File ".\scripts\install_mailhandle.ps1"
+```
+
+That bootstrap flow:
+
+- installs Python 3.11 with `winget`
+- installs Node.js LTS with `winget`
+- installs `pywin32`
+- installs Codex CLI with `npm`
+- runs `codex login`
+- copies the project to `%USERPROFILE%\mailhandle`
+- launches the workspace
+
+Limits:
+
+- `winget` must already be available on the machine
+- `codex login` still requires user interaction
+- classic Outlook still must already be installed and signed in
 
 Primary standalone workflow from the install root:
 
@@ -123,7 +152,9 @@ Reply drafting details:
 
 - the modal uses free-text `Additional notes` plus a separate `second language` dropdown
 - the dropdown automatically requests the localized version, so users do not need to type that into notes
-- pasted Outlook replies keep a normal mail layout: greeting, English body, then optional local-language body
+- the LLM returns one shared structured contract for reply and new-email drafting: `subject`, `greeting`, `body_en`, optional `body_local`, `local_language`, and `closing`
+- pasted Outlook replies keep a normal mail layout: greeting, English body, then optional local-language body, then `[ Powered by Codex ]`
+- new Outlook emails use `subject` for the mail subject and paste greeting, English body, optional local-language body, `[ Powered by Codex ]`, then `closing`
 - the optional local-language body is shown with a light darker background in Outlook HTML and a compact marker like `[Language_TH]`
 
 Without Codex CLI:
@@ -139,13 +170,16 @@ To edit `priority_rules.json`, use the embedded browser editor in the workspace.
 
 Useful fields in `scripts/priority_rules.json`:
 
+- `default_sync_period`
 - `owner_aliases`
 - `manager_senders`
 - `greeting_terms`
 
 Notes:
 
+- `default_sync_period` controls the startup sync window and default mailbox UI range filter; supported values are `today`, `last_1day`, `last_2days`, `last_7_days`, `this_month`, and `last_month`
 - `manager_senders` can match `Bin Tan`, `Bin.Tan@lumentum.com`, or `Bin Tan <Bin.Tan@lumentum.com>`
+- owner-directed priority is now controlled only by explicit rules and flags; the old `boost_owner_attention` top-level switch has been removed
 - changing `priority_rules.json` is forward-looking; it affects future synced items and does not retroactively rescore historical rows already stored in SQLite
 
 ## Release Prep
@@ -172,6 +206,24 @@ Get-Content ".\tmp\mailhandle-last-start.txt"
 ```
 
 - confirm the release bundle excludes local runtime state such as `data\`, `tmp\`, `.cache\`, and local `.env` files
+
+To build release zips:
+
+```powershell
+& ".\scripts\build_release.ps1" -Version "0.1.0"
+```
+
+To build both source and Windows-portable zips:
+
+```powershell
+& ".\scripts\build_release.ps1" -Version "0.1.0" -PortablePythonDir "C:\path\to\python-embed"
+```
+
+Packaging recommendation for new Windows users:
+
+- make `windows-portable` the primary download
+- include `runtime\python` in that artifact so users do not need to install Python
+- keep Codex CLI documented as an optional add-on instead of a setup prerequisite
 
 ## Troubleshooting
 

@@ -1,8 +1,8 @@
 {
+  "default_sync_period": "last_2days",
   "default_priority": "low",
   "suppress_low_priority_notifications": true,
   "collapse_similar_emails": true,
-  "boost_owner_attention": false,
   "owner_aliases": [
     "wader"
   ],
@@ -40,14 +40,14 @@
     {
       "name": "Agile Approval Request",
       "priority": "high",
-      "sender_contains_any": [
-        "agile"
-      ],
       "body_contains_any": [
         "need your approval",
         "your approval",
         "approval required",
         "please approve"
+      ],
+      "sender_contains_any": [
+        "agile"
       ]
     },
     {
@@ -91,15 +91,15 @@
     {
       "name": "Notifications Low",
       "priority": "low",
-      "sender_contains_any": [
-        "noreply",
-        "notification",
-        "updates.miro.com"
-      ],
       "subject_contains_any": [
         "notification",
         "newsletter",
         "digest"
+      ],
+      "sender_contains_any": [
+        "noreply",
+        "notification",
+        "updates.miro.com"
       ]
     }
   ]

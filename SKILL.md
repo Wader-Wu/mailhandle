@@ -24,7 +24,7 @@ description: Package the standalone Windows `mailhandle` Outlook workspace as a 
 8. The launcher requests browser auto-open and also prints the local URL. If the browser does not appear, tell the user to open the reported URL manually.
 9. The page provides:
    - mailbox history from SQLite
-   - time-range filters such as `today`, `last_2days`, and `last_7_days`
+   - time-range filters such as `today`, `last_1day`, `last_2days`, and `last_7_days`
    - priority filters and a default `All_Open` status filter that hides `Done` items
    - inline `status` editing
    - an `Open` action for a specific Outlook item
@@ -68,11 +68,13 @@ $mailhandle launch
 - The SQLite database is the source of truth for review state once initialized.
 - Mail abstracts default to Codex-generated body summaries with a local cache; first runs for unseen emails are slower than repeat runs.
 - Tune personal priority behavior in `scripts/priority_rules.json`, especially `owner_aliases` and `manager_senders`.
+- The default sync period also comes from `scripts/priority_rules.json` via `default_sync_period`; the current baseline is `last_1day`.
 - `manager_senders` can be configured as a display name, SMTP address, or `Name <email>`.
 - When priority rules need editing, use the browser editor flow instead of hand-editing JSON directly.
 - Priority rule edits are forward-looking. They affect future synced items and should not be described as retroactively rescoring historical SQLite rows unless the user explicitly asks for a rebuild/reset.
-- Response drafts should not include signatures or contact blocks because Outlook adds the configured signature.
-- Reply drafting uses a structured internal format, but the Outlook compose result should read like a normal email body: greeting, English body, then optional localized body.
+- Reply and new-email drafting use one structured internal contract: `subject`, `greeting`, `body_en`, optional `body_local`, `local_language`, and `closing`.
+- `Response` ignores `subject` and `closing` when pasting into Outlook, so the compose result still reads like a normal reply body: greeting, English body, then optional localized body, then `[ Powered by Codex ]`.
+- `New Email` uses `subject` for the Outlook subject field and pastes greeting, English body, optional localized body, `[ Powered by Codex ]`, then `closing`.
 - If a second language is selected in the modal, the user should not need to repeat that request in the notes field.
 - For GitHub releases, package only the skill source/docs and exclude local artifacts like `.cache`, `data`, `records`, `sessions`, `tmp`, `log`, `__pycache__`, `*.pyc`, `.env`, and local state files.
 - For release prep, update `references/release-notes-next.md` before packaging.

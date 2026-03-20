@@ -75,45 +75,65 @@ def _draft_text_to_html(value: str) -> str:
     return "".join(paragraphs)
 
 
+def _decode_draft_body(raw: str) -> str:
+    return (
+        str(raw or "")
+        .replace("\\r\\n", "\n")
+        .replace("\\n", "\n")
+        .replace("\\r", "\n")
+        .replace('\\"', '"')
+        .replace("\\\\", "\\")
+        .strip()
+    )
+
+
+def _parse_structured_draft(value: str) -> dict[str, str] | None:
+    text = str(value or "").strip()
+    if not (text.startswith("{") and text.endswith("}")):
+        return None
+    try:
+        payload = json.loads(text)
+    except Exception:
+        return None
+    if not isinstance(payload, dict):
+        return None
+    return {
+        "subject": _decode_draft_body(payload.get("subject")),
+        "greeting": _decode_draft_body(payload.get("greeting")),
+        "body_en": _decode_draft_body(payload.get("body_en")),
+        "body_local": _decode_draft_body(payload.get("body_local")),
+        "local_language": normalize_text(payload.get("local_language")).lower(),
+        "closing": _decode_draft_body(payload.get("closing")),
+    }
+
+
 def _draft_sections(value: str) -> list[tuple[str, str]]:
     text = str(value or "").strip()
     if not text:
         return []
-    def decode_body(raw: str) -> str:
-        return (
-            str(raw or "")
-            .replace("\\r\\n", "\n")
-            .replace("\\n", "\n")
-            .replace("\\r", "\n")
-            .replace('\\"', '"')
-            .replace("\\\\", "\\")
-            .strip()
-        )
-    if text.startswith("{") and text.endswith("}"):
-        try:
-            payload = json.loads(text)
-        except Exception:
-            payload = None
+    structured = _parse_structured_draft(text)
+    if structured is not None:
+        greeting = structured["greeting"]
+        body_en = structured["body_en"]
+        body_local = structured["body_local"]
+        local_language = structured["local_language"]
+        if body_en or body_local or greeting:
+            sections: list[tuple[str, str]] = []
+            en_parts = [part for part in [greeting, body_en] if part]
+            if en_parts:
+                sections.append(("BODY", f"{os.linesep}{os.linesep}".join(en_parts)))
+            if body_local:
+                local_note = f"[Language_{(local_language or 'local').upper()}]"
+                sections.append(("LOCAL", f"{local_note} {body_local}"))
+            if sections:
+                return sections
+        payload = json.loads(text)
         if isinstance(payload, dict):
-            greeting = decode_body(payload.get("greeting"))
-            body_en = decode_body(payload.get("body_en"))
-            body_local = decode_body(payload.get("body_local"))
-            local_language = normalize_text(payload.get("local_language")).lower()
-            if body_en or body_local or greeting:
-                sections: list[tuple[str, str]] = []
-                en_parts = [part for part in [greeting, body_en] if part]
-                if en_parts:
-                    sections.append(("BODY", f"{os.linesep}{os.linesep}".join(en_parts)))
-                if body_local:
-                    local_note = f"[Language_{(local_language or 'local').upper()}]"
-                    sections.append(("LOCAL", f"{local_note} {body_local}"))
-                if sections:
-                    return sections
             sections: list[tuple[str, str]] = []
             for key, raw_value in payload.items():
                 if not str(key).startswith("body_"):
                     continue
-                body = decode_body(raw_value)
+                body = _decode_draft_body(raw_value)
                 if not body:
                     continue
                 label = str(key)[5:].replace("_", " ").strip().upper() or "BODY"
@@ -121,7 +141,7 @@ def _draft_sections(value: str) -> list[tuple[str, str]]:
             if sections:
                 return sections
             for key in ("draft", "body", "reply"):
-                body = decode_body(payload.get(key))
+                body = _decode_draft_body(payload.get(key))
                 if body:
                     return [("BODY", body)]
         matches = re.findall(
@@ -132,7 +152,7 @@ def _draft_sections(value: str) -> list[tuple[str, str]]:
         if matches:
             sections = []
             for key, raw_value in matches:
-                body = decode_body(raw_value)
+                body = _decode_draft_body(raw_value)
                 if not body:
                     continue
                 label = str(key)[5:].replace("_", " ").strip().upper() or "BODY"
@@ -170,6 +190,48 @@ def _draft_sections_to_html(value: str) -> str:
             f"{content_html}</div>"
         )
     return "".join(blocks)
+
+
+def _build_new_mail_text(value: str) -> tuple[str, str]:
+    structured = _parse_structured_draft(value)
+    if structured is None:
+        clean_text = _draft_sections_to_text(value)
+        body = (
+            f"{clean_text}{os.linesep}{os.linesep}{_codex_footer_text()}"
+            if clean_text
+            else _codex_footer_text()
+        )
+        return "", body
+
+    sections = _draft_sections(value)
+    body_parts = [section_body.strip() for _, section_body in sections if section_body.strip()]
+    closing = structured["closing"].strip()
+    subject = structured["subject"].strip()
+    parts = list(body_parts)
+    parts.append(_codex_footer_text())
+    if closing:
+        parts.append(closing)
+    return subject, f"{os.linesep}{os.linesep}".join(parts).strip()
+
+
+def _build_new_mail_html(value: str) -> tuple[str, str]:
+    structured = _parse_structured_draft(value)
+    if structured is None:
+        body_html = _draft_sections_to_html(value)
+        if body_html:
+            return "", f"{body_html}{_codex_footer_html()}"
+        return "", _codex_footer_html()
+
+    subject = structured["subject"].strip()
+    closing_html = _draft_text_to_html(structured["closing"])
+    body_html = _draft_sections_to_html(value)
+    parts: list[str] = []
+    if body_html:
+        parts.append(body_html)
+    parts.append(_codex_footer_html())
+    if closing_html:
+        parts.append(closing_html)
+    return subject, "".join(parts)
 
 
 def _codex_footer_html() -> str:
@@ -909,6 +971,22 @@ def _apply_draft_to_reply(reply, draft_text: str) -> None:
     )
 
 
+def _apply_draft_to_new_mail(mail_item, draft_text: str) -> None:
+    draft = normalize_text(draft_text)
+    if not draft:
+        return
+    subject, draft_html = _build_new_mail_html(draft_text)
+    if subject:
+        mail_item.Subject = subject
+    if draft_html:
+        mail_item.HTMLBody = draft_html
+        return
+    subject, clean_text = _build_new_mail_text(draft_text)
+    if subject:
+        mail_item.Subject = subject
+    mail_item.Body = clean_text
+
+
 def load_group_context(group_key: str) -> dict[str, Any]:
     group = get_group(group_key)
     items = group.get("items", [])
@@ -1051,6 +1129,17 @@ def open_group_reply_all(group_key: str, draft_text: str) -> str:
 
     details = failures[0] if failures else "No valid reply target was found."
     raise RuntimeError(f"No reply target could be opened from Outlook. Details: {details}")
+
+
+def open_new_mail(draft_text: str) -> None:
+    pythoncom.CoInitialize()
+    try:
+        outlook = win32com.client.Dispatch("Outlook.Application")
+        mail_item = outlook.CreateItem(0)
+        _apply_draft_to_new_mail(mail_item, draft_text)
+        mail_item.Display()
+    finally:
+        pythoncom.CoUninitialize()
 
 
 def get_access_token() -> str:

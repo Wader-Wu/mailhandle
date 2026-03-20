@@ -6,6 +6,7 @@ $runScript = Join-Path $scriptDir "run_mail_database.py"
 $tmpDir = Join-Path $projectRoot "tmp"
 $envFile = Join-Path $scriptDir ".env"
 $pidFile = Join-Path $tmpDir "mailhandle-last.pid"
+$bundledPython = Join-Path $projectRoot "runtime\python\python.exe"
 
 New-Item -ItemType Directory -Force -Path $tmpDir | Out-Null
 
@@ -36,9 +37,14 @@ function Get-EnvValue {
     return $null
 }
 
-$pythonExe = Get-EnvValue -Path $envFile -Name "WINDOWS_PYTHON_EXE"
-if (-not $pythonExe) {
-    $pythonExe = "python"
+$pythonExe = $null
+if (Test-Path $bundledPython) {
+    $pythonExe = $bundledPython
+} else {
+    $pythonExe = Get-EnvValue -Path $envFile -Name "WINDOWS_PYTHON_EXE"
+    if (-not $pythonExe) {
+        $pythonExe = "python"
+    }
 }
 
 $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
@@ -50,7 +56,8 @@ $exitCode = 0
 
 try {
     if (Test-Path $pidFile) {
-        $previousPid = (Get-Content $pidFile -ErrorAction SilentlyContinue | Select-Object -First 1).Trim()
+        $previousPidLine = Get-Content $pidFile -ErrorAction SilentlyContinue | Select-Object -First 1
+        $previousPid = if ($null -ne $previousPidLine) { $previousPidLine.ToString().Trim() } else { "" }
         if ($previousPid -match "^\d+$") {
             try {
                 Stop-Process -Id ([int]$previousPid) -Force -ErrorAction Stop
