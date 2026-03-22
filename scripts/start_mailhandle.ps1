@@ -1,8 +1,17 @@
+param(
+    [ValidateSet("gui", "cli")]
+    [string]$Mode = "gui",
+
+    [Parameter(ValueFromRemainingArguments = $true)]
+    [string[]]$CliArgs
+)
+
 $ErrorActionPreference = "Stop"
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $projectRoot = Split-Path -Parent $scriptDir
 $runScript = Join-Path $scriptDir "run_mail_database.py"
+$cliScript = Join-Path $scriptDir "mailhandle_cli.py"
 $tmpDir = Join-Path $projectRoot "tmp"
 $envFile = Join-Path $scriptDir ".env"
 $pidFile = Join-Path $tmpDir "mailhandle-last.pid"
@@ -44,6 +53,24 @@ if (Test-Path $bundledPython) {
     $pythonExe = Get-EnvValue -Path $envFile -Name "WINDOWS_PYTHON_EXE"
     if (-not $pythonExe) {
         $pythonExe = "python"
+    }
+}
+
+$pythonArguments = @()
+if ($Mode -eq "cli") {
+    $pythonArguments += "-u", $cliScript
+    if ($CliArgs -and $CliArgs.Count -gt 0) {
+        $pythonArguments += $CliArgs
+    } else {
+        $pythonArguments += "overview"
+    }
+
+    Push-Location $projectRoot
+    try {
+        & $pythonExe @pythonArguments
+        exit $LASTEXITCODE
+    } finally {
+        Pop-Location
     }
 }
 

@@ -12,11 +12,26 @@ FOLDERS = {
     "inbox": {"id": 6, "name": "Inbox", "time_field": "ReceivedTime"},
     "sent": {"id": 5, "name": "Sent Items", "time_field": "SentOn"},
 }
+OUTLOOK_ATTACH_TIMEOUT_SECONDS = 8.0
+OUTLOOK_ATTACH_RETRY_SECONDS = 0.4
 
 
 def configure_stdout() -> None:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
+
+def get_running_outlook_application():
+    deadline = time.monotonic() + OUTLOOK_ATTACH_TIMEOUT_SECONDS
+    last_exc = None
+    while True:
+        try:
+            return win32com.client.GetActiveObject("Outlook.Application")
+        except Exception as exc:
+            last_exc = exc
+            if time.monotonic() >= deadline:
+                raise RuntimeError("Classic Outlook must already be open before mailhandle can read email.") from last_exc
+            time.sleep(OUTLOOK_ATTACH_RETRY_SECONDS)
 
 
 def get_sender(item) -> str:
@@ -77,7 +92,7 @@ def get_body(item, max_length: int | None = None) -> str:
 
 
 def get_mailbox_owner() -> dict[str, str]:
-    outlook = win32com.client.Dispatch("Outlook.Application")
+    outlook = get_running_outlook_application()
     namespace = outlook.GetNamespace("MAPI")
     current_user = getattr(namespace, "CurrentUser", None)
 
@@ -281,7 +296,7 @@ def matches_filters(item, args: argparse.Namespace, start, end) -> bool:
 
 
 def fetch_messages(args: argparse.Namespace) -> list[dict]:
-    outlook = win32com.client.Dispatch("Outlook.Application")
+    outlook = get_running_outlook_application()
     namespace = outlook.GetNamespace("MAPI")
     folder_config = get_folder_config(args.folder)
     folder = namespace.GetDefaultFolder(int(folder_config["id"]))

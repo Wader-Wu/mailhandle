@@ -1,104 +1,141 @@
 ---
 name: mailhandle
-description: Package the standalone Windows `mailhandle` Outlook workspace as a Codex CLI skill, launch its local browser UI, and tune priority behavior with editable JSON rules.
+description: Sync recent Outlook mail into the local `mailhandle` SQLite database and answer follow-up summary requests from local data.
 ---
 
 # Mailhandle
 
 ## Use When
 
-- The user wants recent Outlook mail from their own desktop mailbox.
-- The user wants a local browser workspace for reviewing mail history and status.
-- The user wants priority filtering, grouped threads, Outlook open actions, or reply drafting.
-- The user wants to tune matching behavior in `priority_rules.json`.
+- The user wants recent Outlook mail from their own Windows desktop mailbox.
+- The user wants to initialize or refresh the local mail database.
+- The user wants command-based mailbox review without starting a webpage.
+- The user wants thread summaries, priority summaries, follow-up summaries, or quick mailbox reporting from local data.
+- The user wants to open a specific Outlook item or draft a reply/new mail from the terminal flow.
+- The user wants to tune matching behavior in `scripts/priority_rules.json`.
 
 ## Workflow
 
-1. Default to Codex CLI usage and treat `$mailhandle start` as the canonical prompt.
-2. Accept `$mailhandle run`, `$mailhandle launch`, `mailhandle start`, `mailhandle run`, and `mailhandle launch` as equivalent requests.
-3. For those prompts, do not inspect unrelated project files first.
-4. Start the workspace immediately with the PowerShell-native command `& "$env:USERPROFILE\.codex\skills\mailhandle\scripts\launch_mailhandle.ps1"`.
-5. Report the launcher output directly. `launch_mailhandle.ps1` waits for the startup summary and prints the workspace URL or current status itself.
-6. If needed, the same status is also written to `%USERPROFILE%\.codex\skills\mailhandle\tmp\mailhandle-last-start.txt`.
-7. Do not run `python scripts/run_mail_database.py` directly from Codex for normal startup.
-8. The launcher requests browser auto-open and also prints the local URL. If the browser does not appear, tell the user to open the reported URL manually.
-9. The page provides:
-   - mailbox history from SQLite
-   - time-range filters such as `today`, `last_1day`, `last_2days`, and `last_7_days`
-   - priority filters and a default `All_Open` status filter that hides `Done` items
-   - inline `status` editing
-   - an `Open` action for a specific Outlook item
-   - thread-level response drafting that opens `Reply All` in Outlook
-   - a `second language` dropdown in the response modal with `None`, `Thailand`, and `Chinese`
-   - an embedded priority-rules editor
-10. If the user asks to update priority rules, use the embedded editor in the workspace.
+1. Treat `$mailhandle start` as the canonical skill action for command-based CLI review.
+2. Accept `$mailhandle run` and `$mailhandle launch` as equivalent CLI `overview` requests.
+3. On those requests, run the launcher in CLI mode:
+   ```powershell
+   & "$env:USERPROFILE\.codex\skills\mailhandle\scripts\launch_mailhandle.ps1" -Mode cli overview --json
+   ```
+4. If `overview --json` returns `used_cached_data: true` or a non-empty `sync_error`, report that the snapshot is from cached SQLite data and tell the user a fresh sync still requires classic Outlook to be open and ready.
+5. Treat `$mailhandle sync` as the explicit refresh command:
+   ```powershell
+   & "$env:USERPROFILE\.codex\skills\mailhandle\scripts\launch_mailhandle.ps1" -Mode cli sync --json
+   ```
+6. If `sync --json` returns `ok: false`, report the `sync_error`, mention `last_sync_end` if present, and only describe mailbox state as cached local data.
+7. For mailbox review actions, use the CLI subcommands directly instead of opening the browser workspace.
+8. Report the command output directly and answer follow-up questions from the local scripts and SQLite-backed runtime state.
+9. Do not involve browser UI tasks, GUI walkthroughs, or embedded editor flows in the default Codex skill behavior.
+10. Only use GUI mode if the user explicitly asks for the webpage/workspace/browser UI.
 
 ## Commands
 
-Database workspace:
-```bash
-& "$env:USERPROFILE\.codex\skills\mailhandle\scripts\launch_mailhandle.ps1"
+CLI overview from a Codex skill install:
+
+```powershell
+& "$env:USERPROFILE\.codex\skills\mailhandle\scripts\launch_mailhandle.ps1" -Mode cli overview --json
 ```
 
-Manual `cmd.exe` launch:
+Explicit sync:
+
+```powershell
+& "$env:USERPROFILE\.codex\skills\mailhandle\scripts\launch_mailhandle.ps1" -Mode cli sync --json
+```
+
+List current open groups:
+
+```powershell
+& "$env:USERPROFILE\.codex\skills\mailhandle\scripts\launch_mailhandle.ps1" -Mode cli list --json
+```
+
+Show one thread:
+
+```powershell
+& "$env:USERPROFILE\.codex\skills\mailhandle\scripts\launch_mailhandle.ps1" -Mode cli show "<group-key-or-email-id>" --json
+```
+
+Update status:
+
+```powershell
+& "$env:USERPROFILE\.codex\skills\mailhandle\scripts\launch_mailhandle.ps1" -Mode cli status "<email-id>" done --json
+```
+
+Manual `cmd.exe` launch for CLI overview:
+
 ```bat
-powershell -NoProfile -ExecutionPolicy Bypass -File "%USERPROFILE%\.codex\skills\mailhandle\scripts\launch_mailhandle.ps1"
+powershell -NoProfile -ExecutionPolicy Bypass -File "%USERPROFILE%\.codex\skills\mailhandle\scripts\launch_mailhandle.ps1" -Mode cli overview --json
 ```
 
-Prompt forms:
+Useful prompt forms:
+
 ```text
 $mailhandle start
 $mailhandle run
 $mailhandle launch
+$mailhandle sync
 ```
+
+## Required Config
+
+Supported skill-mode configuration lives in:
+
+- `scripts/priority_rules.json`
+  - required
+  - the only user-facing configuration file for this skill
+  - controls priority logic and the default sync period through `default_sync_period`
+
+Runtime prerequisites outside config files:
+
+- classic Outlook installed, signed in, and already open
+- Windows PowerShell and Python available to run the local launcher and CLI scripts
 
 ## Rules
 
-- This skill depends on local classic Outlook on Windows and Windows Python configured in `scripts/.env` for installed/runtime use.
-- The underlying runtime is a standalone Windows tool; the Codex skill is one distribution and launch mode, not a special host environment.
-- Treat Codex CLI as the release execution mode for this skill.
-- Prefer the prompt verb `start`; treat `run` and `launch` as equivalent aliases for opening the workspace.
-- On `start`/`run`/`launch`, execute the launcher command directly instead of reading README or exploring the workspace first.
-- Use the PowerShell-native `launch_mailhandle.ps1` entrypoint from Codex sessions.
-- If the user asks for a `cmd.exe` command, provide `powershell -NoProfile -ExecutionPolicy Bypass -File "%USERPROFILE%\.codex\skills\mailhandle\scripts\launch_mailhandle.ps1"` instead of defaulting to `start_mailhandle.cmd`.
-- Report the launcher output directly; it comes from `%USERPROFILE%\.codex\skills\mailhandle\tmp\mailhandle-last-start.txt`.
-- Use the launcher instead of running `run_mail_database.py` directly from Codex, because the workspace server is a long-lived local process and the launcher handles startup plus browser auto-open.
-- Codex CLI is optional for the runtime itself; without the `codex` executable, startup and core workspace features still work, but LLM-backed abstracts and reply drafting do not.
-- Keep the documented workflow centered on `scripts/run_mail_database.py`; do not reintroduce removed summary/report entrypoints.
+- This skill depends on local classic Outlook on Windows.
+- Read access is limited to an already opened classic Outlook session; the skill should not try to start Outlook on the user's behalf.
+- The underlying runtime is a standalone Windows tool; the Codex skill is only one launch mode.
 - The SQLite database is the source of truth for review state once initialized.
-- Mail abstracts default to Codex-generated body summaries with a local cache; first runs for unseen emails are slower than repeat runs.
-- Tune personal priority behavior in `scripts/priority_rules.json`, especially `owner_aliases` and `manager_senders`.
-- The default sync period also comes from `scripts/priority_rules.json` via `default_sync_period`; the current baseline is `last_1day`.
+- Default to CLI mode via `scripts/launch_mailhandle.ps1 -Mode cli`.
+- Use the launcher or `scripts/mailhandle_cli.py` for Codex-driven review actions.
+- Use `sync` when the user explicitly asks to refresh/init the database.
+- If `sync --json` returns `ok: false`, treat that as a live-sync failure, not a successful refresh.
+- `scripts/priority_rules.json` must exist for sync because the runtime reads it during initialization.
+- Treat `scripts/priority_rules.json` as the only supported configuration update path in skill mode.
+- Do not make GUI interaction part of the default skill flow.
+- Use local scripts and stored data for summary answers after sync.
+- Use `overview` for a fast mailbox snapshot, `list` for grouped results, and `show` for one detailed thread.
+- If `overview` falls back to cached data, say that explicitly instead of treating the run as a launcher failure.
+- Use `status`, `open`, `reply-draft`, `reply-open`, `new-email-draft`, and `new-email-open` when the user asks for those concrete actions.
+- If the user explicitly asks for the webpage/browser workspace, use GUI mode with `scripts/launch_mailhandle.ps1` and say that this is the non-default path.
+- Codex CLI is optional for the runtime itself; without the `codex` executable, sync and local review still work, but LLM-backed abstracts and drafting do not.
+- Tune personal priority behavior in `scripts/priority_rules.json`, especially `default_sync_period`, `owner_aliases`, and `manager_senders`.
 - `manager_senders` can be configured as a display name, SMTP address, or `Name <email>`.
-- When priority rules need editing, use the browser editor flow instead of hand-editing JSON directly.
+- In skill mode, all supported configuration updates should be made by editing `scripts/priority_rules.json` manually.
 - Priority rule edits are forward-looking. They affect future synced items and should not be described as retroactively rescoring historical SQLite rows unless the user explicitly asks for a rebuild/reset.
-- Reply and new-email drafting use one structured internal contract: `subject`, `greeting`, `body_en`, optional `body_local`, `local_language`, and `closing`.
-- `Response` ignores `subject` and `closing` when pasting into Outlook, so the compose result still reads like a normal reply body: greeting, English body, then optional localized body, then `[ Powered by Codex ]`.
-- `New Email` uses `subject` for the Outlook subject field and pastes greeting, English body, optional localized body, `[ Powered by Codex ]`, then `closing`.
-- If a second language is selected in the modal, the user should not need to repeat that request in the notes field.
-- For GitHub releases, package only the skill source/docs and exclude local artifacts like `.cache`, `data`, `records`, `sessions`, `tmp`, `log`, `__pycache__`, `*.pyc`, `.env`, and local state files.
-- For release prep, update `references/release-notes-next.md` before packaging.
 - Keep summaries grounded in the returned fields. Do not invent senders, actions, or deadlines.
 
 ## References
 
 Read `README.md` for:
-- standalone installation and setup
-- optional Codex CLI prerequisites
-- Windows/Outlook compatibility
+
+- what the tool does
+- installation
+- GUI and CLI usage
 
 Read `references/runbook.md` for:
-- available arguments
-- project file locations
+
+- CLI commands
+- runtime file locations
+- packaging and validation steps
 - troubleshooting notes
-- release packaging and validation steps
 
 Read `references/database-design.md` for:
+
 - the SQLite-backed history model
 - grouping and sync rules
-- DPAPI encryption strategy
-- browser workspace behavior
-
-Read `references/release-notes-next.md` for:
-- the current draft release summary
-- the pre-release validation checklist
+- DPAPI protection notes

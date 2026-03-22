@@ -4,7 +4,8 @@ This project is a standalone Windows runtime that can also be packaged as a Code
 
 ## Runtime Modes
 
-- Standalone Windows app: launch `scripts\launch_mailhandle.ps1` from any copied install folder.
+- Standalone Windows app in GUI mode: launch `scripts\launch_mailhandle.ps1` from any copied install folder.
+- Standalone Windows app in CLI mode: launch `scripts\launch_mailhandle.ps1 -Mode cli` to use terminal commands only.
 - Standalone Windows app with Codex CLI: same runtime, plus LLM-generated abstracts and reply drafts.
 - Codex skill install: same runtime copied under `~/.codex/skills/mailhandle` and launched through prompt aliases.
 
@@ -77,7 +78,7 @@ Limits:
 - `codex login` still requires user interaction
 - classic Outlook still must already be installed and signed in
 
-Primary standalone workflow from the install root:
+Primary standalone GUI workflow from the install root:
 
 ```powershell
 & ".\scripts\launch_mailhandle.ps1"
@@ -90,6 +91,21 @@ powershell -NoProfile -ExecutionPolicy Bypass -File ".\scripts\launch_mailhandle
 ```
 
 From any folder, replace `.\` with the absolute path to your install.
+
+Command-based CLI mode from the install root:
+
+```powershell
+& ".\scripts\launch_mailhandle.ps1" -Mode cli
+```
+
+Examples:
+
+```powershell
+& ".\scripts\launch_mailhandle.ps1" -Mode cli list --status todo
+& ".\scripts\launch_mailhandle.ps1" -Mode cli show "introduction of ofs 980-26 based wdm"
+& ".\scripts\launch_mailhandle.ps1" -Mode cli status "<email-id>" done
+python .\scripts\mailhandle_cli.py --help
+```
 
 Codex skill install example:
 
@@ -139,6 +155,8 @@ If the browser does not appear, open the reported workspace URL manually.
 
 Direct `python scripts/run_mail_database.py` is still valid for manual debugging, but it should not be the default Codex skill entrypoint because it keeps the CLI attached to the long-lived server process.
 
+Direct `python scripts/mailhandle_cli.py` is the command-based terminal entrypoint. With no subcommand it defaults to `overview`.
+
 `scripts\start_mailhandle.cmd` remains available as a thin wrapper, but the direct `cmd.exe` command above is the recommended manual CMD entrypoint.
 
 ## Optional Codex CLI Features
@@ -161,10 +179,14 @@ Without Codex CLI:
 
 - startup still works
 - sync still works
+- the command-based CLI still works
 - the browser workspace still works
 - reply drafting is unavailable
 
-To edit `priority_rules.json`, use the embedded browser editor in the workspace.
+To edit `priority_rules.json`:
+
+- GUI mode: use the embedded browser editor in the workspace
+- CLI mode: edit `scripts\priority_rules.json` manually
 
 ## Priority Tuning
 

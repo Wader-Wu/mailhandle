@@ -222,9 +222,10 @@ This does not make the database secret against a machine admin, but it prevents 
 
 ## Runtime Entry Points
 
-- `scripts/launch_mailhandle.ps1`: primary launcher for PowerShell and Codex sessions; starts the workspace in the background and requests browser auto-open
-- `scripts/start_mailhandle.ps1`: launcher implementation that starts `run_mail_database.py --open-browser`
+- `scripts/launch_mailhandle.ps1`: primary launcher for PowerShell and Codex sessions; defaults to GUI mode and also accepts `-Mode cli`
+- `scripts/start_mailhandle.ps1`: launcher implementation for both modes; GUI starts `run_mail_database.py --open-browser`, CLI runs `mailhandle_cli.py`
 - `scripts/start_mailhandle.cmd`: optional CMD wrapper; direct `powershell -NoProfile -ExecutionPolicy Bypass -File ".\scripts\launch_mailhandle.ps1"` is the recommended manual `cmd.exe` command from the install root
 - `scripts/run_mail_database.py`: syncs the last 7 days, serves the local browser UI, and opens Outlook items
+- `scripts/mailhandle_cli.py`: command-based CLI that syncs, lists, shows, updates, and opens mail without starting a webpage
 - `scripts/mailhandle_db.py`: SQLite storage and DPAPI helpers
 - `data/mailhandle.sqlite`: local single-user database file

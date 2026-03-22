@@ -8,6 +8,7 @@ Major features:
 
 - syncs `Inbox` and `Sent Items` from classic Outlook into a local SQLite database
 - shows grouped mail threads in a local browser UI
+- supports a command-based CLI mode that does not start a webpage
 - lets you filter by time range, priority, and status
 - lets you open the original Outlook item directly
 - lets you mark status and keep that review state locally
@@ -71,7 +72,7 @@ codex login
 
 ## 3. How To Use
 
-### Start
+### Start GUI Mode
 
 From the project root in PowerShell:
 
@@ -91,7 +92,9 @@ From `cmd.exe`:
 powershell -NoProfile -ExecutionPolicy Bypass -File ".\scripts\launch_mailhandle.ps1"
 ```
 
-### Use The Workspace
+From any folder, replace `.\` with the absolute path to your install.
+
+### Use The GUI Workspace
 
 After launch:
 
@@ -104,9 +107,61 @@ After launch:
 - use `New Email` to draft a new message
 - use the `Priority rules` tab to edit `scripts\priority_rules.json`
 
-Notes:
+### Start CLI Mode
 
-- if you select a second language in the draft dialog, the tool can automatically generate a localized version of the email body
+Run the command-based CLI without starting the browser workspace:
+
+```powershell
+& ".\scripts\launch_mailhandle.ps1" -Mode cli
+```
+
+From `cmd.exe`:
+
+```bat
+powershell -NoProfile -ExecutionPolicy Bypass -File ".\scripts\launch_mailhandle.ps1" -Mode cli
+```
+
+Direct Python entrypoint:
+
+```powershell
+python .\scripts\mailhandle_cli.py
+```
+
+`CLI` mode defaults to `overview`, which syncs recent mail and prints the current open groups in the terminal.
+
+Examples:
+
+```powershell
+& ".\scripts\launch_mailhandle.ps1" -Mode cli sync --json
+& ".\scripts\launch_mailhandle.ps1" -Mode cli list --status todo
+& ".\scripts\launch_mailhandle.ps1" -Mode cli show "<group-key-or-email-id>"
+& ".\scripts\launch_mailhandle.ps1" -Mode cli status "<email-id>" done
+& ".\scripts\launch_mailhandle.ps1" -Mode cli open "<email-id>"
+python .\scripts\mailhandle_cli.py --help
+```
+
+### Use CLI Mode
+
+Useful commands:
+
+- `overview`: sync then print the current grouped mailbox view
+- `sync`: refresh the local SQLite database without printing the full overview
+- `list`: show grouped threads already stored in SQLite
+- `show <group-key-or-email-id>`: print one thread in detail
+- `status <email-id> <todo|doing|done>`: update local review state
+- `open <email-id>`: open the original Outlook item
+- `reply-draft <group-key-or-email-id>`: generate a reply draft JSON
+- `reply-open <group-key-or-email-id>`: open `Reply All` in Outlook, optionally with a prepared draft
+- `new-email-draft`: generate a new email draft JSON
+- `new-email-open`: open a new Outlook email, optionally with a prepared draft
+
+In CLI mode, edit `scripts\priority_rules.json` manually when you want to change rule behavior.
+
+Drafting notes:
+
+- `reply-draft` and `new-email-draft` require Codex CLI to be installed and logged in
+- in GUI mode, the draft dialog supports a `second language` selector for `Thailand` and `Chinese`
+- in CLI mode, request any second-language output in your notes text or notes file
 - generated replies and new emails automatically append `Powered by Codex`
 
 Advanced docs:
