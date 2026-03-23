@@ -451,7 +451,7 @@ def command_reply_draft(args: argparse.Namespace) -> int:
     mailhandle_db.ensure_database()
     group = _resolve_group(args.identifier)
     notes = _read_optional_text(inline_value=args.notes, file_path=args.notes_file)
-    context = mailhandle_db.load_group_context(group["group_key"])
+    context = mailhandle_db.load_group_context(group["group_key"], latest_only=True)
     draft_text = mailhandle_runtime.request_llm_group_reply(context, notes)
     if args.json:
         payload = {"group_key": context.get("group_key", ""), "draft": _parse_draft_payload(draft_text)}

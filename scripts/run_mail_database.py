@@ -317,7 +317,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                 self._send_json({"error": "Not found"}, status=HTTPStatus.NOT_FOUND)
                 return
             try:
-                self._send_json({"group": mailhandle_db.load_group_context(unquote(encoded_key))})
+                self._send_json({"group": mailhandle_db.load_group_context(unquote(encoded_key), latest_only=True)})
             except Exception as exc:
                 self._send_json({"error": str(exc)}, status=HTTPStatus.BAD_REQUEST)
             return
@@ -389,7 +389,7 @@ class RequestHandler(BaseHTTPRequestHandler):
             group_key = unquote(path[len("/api/group/") : -len("/draft")])
             try:
                 payload = self._read_json()
-                group_context = mailhandle_db.load_group_context(group_key)
+                group_context = mailhandle_db.load_group_context(group_key, latest_only=True)
                 draft = mailhandle_runtime.request_llm_group_reply(group_context, str(payload.get("notes") or ""))
                 self._send_json({"draft": draft, "group": group_context})
             except Exception as exc:

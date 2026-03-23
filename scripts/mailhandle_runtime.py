@@ -233,14 +233,33 @@ def _normalize_structured_draft(payload: dict) -> str:
     return json.dumps(normalized, ensure_ascii=False, indent=2)
 
 
+def _build_group_reply_payload(group_context: dict, notes: str) -> dict:
+    items = list(group_context.get("items") or [])
+    latest_item = dict(items[-1]) if items else {}
+    return {
+        "thread": {
+            "group_key": group_context.get("group_key", ""),
+            "title": group_context.get("title", ""),
+            "count": int(group_context.get("count", len(items)) or len(items)),
+            "latest_email_id": group_context.get("latest_email_id", ""),
+            "reply_target_email_id": group_context.get("reply_target_email_id", ""),
+            "warnings": list(group_context.get("warnings") or []),
+        },
+        "latest_message": latest_item,
+        "user_notes": notes,
+    }
+
+
 def request_llm_group_reply(group_context: dict, notes: str) -> str:
     codex_command = summarize_mail.get_codex_command()
     if not codex_command:
         raise RuntimeError("Codex CLI is not available for response generation.")
     owner_name = _mail_owner_name()
-    payload = {"thread": group_context, "user_notes": notes}
+    payload = _build_group_reply_payload(group_context, notes)
     prompt = (
         "Draft a professional Outlook reply-all email from the provided thread context.\n"
+        "- The payload includes only the latest available message from the thread.\n"
+        "- That latest message body may already include quoted history from earlier emails.\n"
         "- Keep facts grounded in the thread.\n"
         "- Do not invent dates or commitments.\n"
         "- Use a structured reply format with these fields only: subject, greeting, body_en, body_local, local_language, closing.\n"

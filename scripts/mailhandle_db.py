@@ -987,17 +987,18 @@ def _apply_draft_to_new_mail(mail_item, draft_text: str) -> None:
     mail_item.Body = clean_text
 
 
-def load_group_context(group_key: str) -> dict[str, Any]:
+def load_group_context(group_key: str, *, latest_only: bool = False) -> dict[str, Any]:
     group = get_group(group_key)
     items = group.get("items", [])
     if not items:
         raise KeyError(group_key)
 
+    source_items = items[-1:] if latest_only else items
     context_items: list[dict[str, Any]] = []
     missing_count = 0
     pythoncom.CoInitialize()
     try:
-        for item in items:
+        for item in source_items:
             try:
                 outlook_item = _get_outlook_item(
                     str(item.get("entry_id") or ""),
@@ -1022,14 +1023,17 @@ def load_group_context(group_key: str) -> dict[str, Any]:
     latest_item = items[-1]
     warnings: list[str] = []
     if missing_count:
-        noun = "item" if missing_count == 1 else "items"
-        warnings.append(
-            f"{missing_count} thread {noun} could not be reopened from Outlook. Stored abstracts are shown instead."
-        )
+        if latest_only:
+            warnings.append("The latest thread item could not be reopened from Outlook. Stored abstract is shown instead.")
+        else:
+            noun = "item" if missing_count == 1 else "items"
+            warnings.append(
+                f"{missing_count} thread {noun} could not be reopened from Outlook. Stored abstracts are shown instead."
+            )
     return {
         "group_key": group.get("group_key", ""),
         "title": group.get("title", ""),
-        "count": len(context_items),
+        "count": len(items),
         "latest_email_id": latest_item.get("email_id", ""),
         "reply_target_email_id": group.get("reply_target_email_id", ""),
         "warnings": warnings,
