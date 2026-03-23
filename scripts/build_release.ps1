@@ -23,7 +23,8 @@ $portableZip = "$portableStage.zip"
 
 $topLevelIncludes = @(
     "README.md",
-    "SKILL.md"
+    "SKILL.md",
+    "start_mailhandle_gui.bat"
 )
 
 $treeIncludes = @(

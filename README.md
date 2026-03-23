@@ -74,6 +74,14 @@ codex login
 
 ### Start GUI Mode
 
+For end users on Windows Explorer, just double-click:
+
+```text
+start_mailhandle_gui.bat
+```
+
+That launches the existing PowerShell GUI launcher and opens the browser workspace.
+
 From the project root in PowerShell:
 
 ```powershell

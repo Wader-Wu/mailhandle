@@ -6,6 +6,7 @@ This project is a standalone Windows runtime that can also be packaged as a Code
 
 - Standalone Windows app in GUI mode: launch `scripts\launch_mailhandle.ps1` from any copied install folder.
 - Standalone Windows app in CLI mode: launch `scripts\launch_mailhandle.ps1 -Mode cli` to use terminal commands only.
+- End-user double-click entrypoint for GUI mode: `start_mailhandle_gui.bat` from the install root.
 - Standalone Windows app with Codex CLI: same runtime, plus LLM-generated abstracts and reply drafts.
 - Codex skill install: same runtime copied under `~/.codex/skills/mailhandle` and launched through prompt aliases.
 
