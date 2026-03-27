@@ -14,6 +14,7 @@ DEFAULT_SENT_PRIORITY = "medium"
 DEFAULT_SENT_STATUS = "doing"
 DATE_PRESET_CHOICES = ["today", "yesterday", "last_1day", "last_2days", "last_7_days", "this_month", "last_month"]
 DEFAULT_SYNC_PERIOD = "last_1day"
+DEFAULT_LLM_MODEL = "codex-mini-latest"
 PROJECT_KEYWORDS = {
     "zhuque": ["zhuque"],
     "nokia": ["nokia"],
@@ -52,6 +53,12 @@ def load_runtime_env() -> None:
     load_env_file(DEV_ENV_FILE if DEV_ENV_FILE.exists() else RUNTIME_ENV_FILE)
 
 
+def emit_progress(progress_callback, message: str) -> None:
+    if not progress_callback:
+        return
+    progress_callback(str(message or "").strip())
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--limit", type=int, default=20)
@@ -84,12 +91,25 @@ def normalize_date_preset(value: str) -> str:
     return DEFAULT_SYNC_PERIOD
 
 
+def normalize_llm_model(value: str) -> str:
+    return str(value or "").strip() or DEFAULT_LLM_MODEL
+
+
 def get_default_sync_period() -> str:
     try:
         config = load_priority_rules()
     except Exception:
         return DEFAULT_SYNC_PERIOD
     return normalize_date_preset(str(config.get("default_sync_period") or DEFAULT_SYNC_PERIOD))
+
+
+def get_llm_model(rules_config: dict | None = None) -> str:
+    if rules_config is None:
+        try:
+            rules_config = load_priority_rules()
+        except Exception:
+            rules_config = {}
+    return normalize_llm_model(str(rules_config.get("llm_model") or ""))
 
 
 def get_mail_owner() -> dict[str, str]:
@@ -786,7 +806,7 @@ def sanitize_abstract_text(text: str) -> str:
     return cleaned.strip(" .;,-")
 
 
-def request_llm_abstract(email_payload: dict) -> str:
+def request_llm_abstract(email_payload: dict, *, model_name: str) -> str:
     codex_command = get_codex_command()
     if not codex_command:
         return ""
@@ -838,7 +858,6 @@ def request_llm_abstract(email_payload: dict) -> str:
             str(PROJECT_ROOT),
             "-",
         ]
-        model_name = os.getenv("MAILHANDLE_ABSTRACT_MODEL", "").strip()
         if model_name:
             command[2:2] = ["-m", model_name]
 
@@ -857,10 +876,12 @@ def request_llm_abstract(email_payload: dict) -> str:
     return sanitize_abstract_text(payload.get("abstract", ""))
 
 
-def generate_llm_abstracts(messages: list[dict]) -> dict[str, str]:
+def generate_llm_abstracts(messages: list[dict], *, model_name: str, progress_callback=None) -> dict[str, str]:
     cache = load_abstract_cache()
     abstracts: dict[str, str] = {}
     cache_changed = False
+    pending: list[tuple[dict, dict]] = []
+    cached_count = 0
 
     for message in messages:
         message_id = str(message.get("id") or "")
@@ -869,23 +890,52 @@ def generate_llm_abstracts(messages: list[dict]) -> dict[str, str]:
         cached = get_cached_abstract(message, cache)
         if cached:
             abstracts[message_id] = cached
+            cached_count += 1
             continue
 
         payload = build_llm_email_payload(message)
         if payload is None:
             continue
+        pending.append((message, payload))
+
+    total = len(pending)
+    if total == 0:
+        if cached_count:
+            emit_progress(progress_callback, f"Abstracts already cached for {cached_count} messages. Applying local rules...")
+        return abstracts
+
+    if not get_codex_command():
+        emit_progress(
+            progress_callback,
+            f"Skipping {total} LLM abstracts because Codex CLI is not available. Applying local rules...",
+        )
+        return abstracts
+
+    preface = f"Generating {total} new LLM abstracts with {model_name}"
+    if cached_count:
+        preface += f" ({cached_count} already cached)"
+    emit_progress(progress_callback, preface + "...")
+
+    for index, (message, payload) in enumerate(pending, start=1):
+        emit_progress(progress_callback, f"Generating LLM abstracts {index}/{total} with {model_name}...")
         try:
-            abstract = request_llm_abstract(payload)
+            abstract = request_llm_abstract(payload, model_name=model_name)
         except Exception:
+            emit_progress(
+                progress_callback,
+                f"LLM abstract generation stopped at {index - 1}/{total}. Continuing with available results...",
+            )
             return abstracts
         if not abstract:
             continue
+        message_id = str(message.get("id") or "")
         abstracts[message_id] = abstract
         cache_abstract(message, abstract, cache)
         cache_changed = True
 
     if cache_changed:
         save_abstract_cache(cache)
+    emit_progress(progress_callback, "Finished generating LLM abstracts. Applying local rules...")
     return abstracts
 
 
@@ -1230,16 +1280,22 @@ def print_report(result: dict) -> None:
             print()
 
 
-def build_result(args: argparse.Namespace) -> dict:
+def build_result(args: argparse.Namespace, progress_callback=None) -> dict:
     load_runtime_env()
 
+    emit_progress(progress_callback, "Reading Inbox from Outlook...")
     mail_payload = run_reader(args, folder="inbox")
+    emit_progress(progress_callback, "Reading Sent Items from Outlook...")
     sent_messages = fetch_sent_messages(args)
     rules_config = load_priority_rules()
     owner = get_mail_owner()
+    llm_model = get_llm_model(rules_config)
     llm_abstracts = generate_llm_abstracts(
-        mail_payload.get("messages", []) + sent_messages
+        mail_payload.get("messages", []) + sent_messages,
+        model_name=llm_model,
+        progress_callback=progress_callback,
     )
+    emit_progress(progress_callback, "Applying local priority rules and grouping mail...")
 
     todos = []
     for message in mail_payload.get("messages", []):

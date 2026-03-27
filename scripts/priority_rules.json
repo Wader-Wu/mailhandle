@@ -1,5 +1,6 @@
 {
   "default_sync_period": "last_2days",
+  "llm_model": "codex-mini-latest",
   "default_priority": "low",
   "suppress_low_priority_notifications": true,
   "collapse_similar_emails": true,

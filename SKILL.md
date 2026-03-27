@@ -87,7 +87,7 @@ Supported skill-mode configuration lives in:
 - `scripts/priority_rules.json`
   - required
   - the only user-facing configuration file for this skill
-  - controls priority logic and the default sync period through `default_sync_period`
+  - controls priority logic, the default sync period through `default_sync_period`, and the shared LLM model through `llm_model`
 
 Runtime prerequisites outside config files:
 
@@ -113,7 +113,8 @@ Runtime prerequisites outside config files:
 - Use `status`, `open`, `reply-draft`, `reply-open`, `new-email-draft`, and `new-email-open` when the user asks for those concrete actions.
 - If the user explicitly asks for the webpage/browser workspace, use GUI mode with `scripts/launch_mailhandle.ps1` and say that this is the non-default path.
 - Codex CLI is optional for the runtime itself; without the `codex` executable, sync and local review still work, but LLM-backed abstracts and drafting do not.
-- Tune personal priority behavior in `scripts/priority_rules.json`, especially `default_sync_period`, `owner_aliases`, and `manager_senders`.
+- Tune personal priority behavior in `scripts/priority_rules.json`, especially `default_sync_period`, `llm_model`, `owner_aliases`, and `manager_senders`.
+- `llm_model` is the shared model setting for abstracts and drafting, and falls back to `codex-mini-latest` if omitted.
 - `manager_senders` can be configured as a display name, SMTP address, or `Name <email>`.
 - In skill mode, all supported configuration updates should be made by editing `scripts/priority_rules.json` manually.
 - Priority rule edits are forward-looking. They affect future synced items and should not be described as retroactively rescoring historical SQLite rows unless the user explicitly asks for a rebuild/reset.

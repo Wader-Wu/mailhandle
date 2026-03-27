@@ -42,6 +42,18 @@ HTML_TEMPLATE = HTML_TEMPLATE.replace(
     ".hero{position:relative;margin-bottom:16px;padding-top:18px}.hero-head{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding-right:250px;min-height:44px}.hero-head .eyebrow{font-size:clamp(24px,3.4vw,36px);padding:8px 14px;letter-spacing:.04em;text-transform:none}.hero-identity{display:grid;gap:4px}.mailbox-address{font-size:14px;font-weight:700;line-height:1.35;color:var(--muted)}.last-sync-line{font-size:12px;line-height:1.35;color:var(--muted)}.workspace-notice{margin-top:10px;padding:10px 12px;border:1px solid #e3d3b1;border-radius:12px;background:#fff7e8;color:#7a4b12;font-size:13px;line-height:1.45}.workspace-notice.error{border-color:#f3c1bb;background:#fff1ef;color:#8a1c12}",
 )
 HTML_TEMPLATE = HTML_TEMPLATE.replace(
+    ".workspace-notice.error{border-color:#f3c1bb;background:#fff1ef;color:#8a1c12}",
+    ".workspace-notice.error{border-color:#f3c1bb;background:#fff1ef;color:#8a1c12}.rules-credit{margin-top:12px;text-align:right;color:var(--muted);font-size:12px;line-height:1.4}",
+)
+HTML_TEMPLATE = HTML_TEMPLATE.replace(
+    ".stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin-top:16px}.stat{border:1px solid var(--line);border-radius:14px;padding:14px;background:#fff}.stat strong{display:block;font-size:26px}.stat span{display:block;margin-top:6px;color:var(--muted);font-size:13px}",
+    ".stat-grid{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:10px;margin-top:16px}.stat{min-width:0;border:1px solid var(--line);border-radius:14px;padding:12px 14px 11px;background:#fff}.stat strong{display:block;font-size:20px;line-height:1}.stat span{display:block;margin-top:5px;color:var(--muted);font-size:12px;line-height:1.2}",
+)
+HTML_TEMPLATE = HTML_TEMPLATE.replace(
+    "</style>",
+    "@media (max-width:960px){.stat-grid{grid-template-columns:repeat(auto-fit,minmax(92px,1fr));gap:8px}.stat{padding:10px 11px}.stat strong{font-size:18px}.stat span{font-size:11px}}</style>",
+)
+HTML_TEMPLATE = HTML_TEMPLATE.replace(
     '<div class="meta" hidden><span class="chip" id="dbPath"></span><span class="chip" id="syncState"></span></div>',
     '',
 )
@@ -56,6 +68,10 @@ HTML_TEMPLATE = HTML_TEMPLATE.replace(
 HTML_TEMPLATE = HTML_TEMPLATE.replace(
     '<div class="actions"><button id="refreshBtn" type="button">Refresh from last sync</button><button id="reloadBtn" class="secondary" type="button">Reload view</button></div>',
     '<div class="actions"><button id="refreshBtn" type="button">Refresh from last sync</button><button id="reloadBtn" class="secondary" type="button">Reload view</button></div><div class="actions"><button id="newEmailBtn" type="button">New Email</button></div>',
+)
+HTML_TEMPLATE = HTML_TEMPLATE.replace(
+    '<iframe id="rulesFrame" class="rules-frame" src="/priority-editor?token=__TOKEN__"></iframe>',
+    '<iframe id="rulesFrame" class="rules-frame" src="/priority-editor?token=__TOKEN__"></iframe><div class="rules-credit">Developed by Luqing Wu @ 2026</div>',
 )
 HTML_TEMPLATE = HTML_TEMPLATE.replace(
     '.item{position:relative;border:1px solid var(--line);border-radius:16px;padding:16px;background:#fff}.item:before{content:"";position:absolute;left:-18px;top:24px;width:10px;height:10px;border-radius:999px;background:var(--accent);box-shadow:0 0 0 4px rgba(15,118,110,.12)}',
@@ -219,19 +235,19 @@ APP_JS = APP_JS.replace(
 )
 APP_JS = APP_JS.replace(
     'let activeGroup=null;',
-    'let activeGroup=null;let syncPollTimer=null;let noticeTimer=null;let dismissedSyncMessage=\"\";',
+    'let activeGroup=null;let syncPollTimer=null;let noticeTimer=null;let autoSyncTimer=null;let dismissedSyncMessage=\"\";const AUTO_SYNC_INTERVAL_MS=600000;',
 )
 APP_JS = APP_JS.replace(
     'function setNotice(message,isError){if(!el.workspaceNotice)return;if(message){el.workspaceNotice.hidden=false;el.workspaceNotice.textContent=message;el.workspaceNotice.classList.toggle(\"error\",!!isError)}else{el.workspaceNotice.hidden=true;el.workspaceNotice.textContent=\"\";el.workspaceNotice.classList.remove(\"error\")}}',
-    'function setNotice(message,isError){if(!el.workspaceNotice)return;if(message){el.workspaceNotice.hidden=false;el.workspaceNotice.textContent=message;el.workspaceNotice.classList.toggle(\"error\",!!isError)}else{el.workspaceNotice.hidden=true;el.workspaceNotice.textContent=\"\";el.workspaceNotice.classList.remove(\"error\")}}function clearSyncPoll(){if(syncPollTimer){window.clearTimeout(syncPollTimer);syncPollTimer=null}}function scheduleSyncPoll(delay){clearSyncPoll();syncPollTimer=window.setTimeout(function(){loadData()},delay||1500)}function clearNoticeTimer(){if(noticeTimer){window.clearTimeout(noticeTimer);noticeTimer=null}}function updateSyncNotice(){const message=String(data.sync_message||\"\");if(data.sync_running){dismissedSyncMessage=\"\";clearNoticeTimer();setNotice(message||\"Starting sync...\",false);scheduleSyncPoll(1500);return}clearSyncPoll();if(data.sync_error){dismissedSyncMessage=\"\";clearNoticeTimer();setNotice(message,true);return}if(!message){dismissedSyncMessage=\"\";clearNoticeTimer();setNotice(\"\",false);return}if(dismissedSyncMessage===message){setNotice(\"\",false);return}setNotice(message,false);clearNoticeTimer();noticeTimer=window.setTimeout(function(){dismissedSyncMessage=message;setNotice(\"\",false)},4000)}',
+    'function setNotice(message,isError){if(!el.workspaceNotice)return;if(message){el.workspaceNotice.hidden=false;el.workspaceNotice.textContent=message;el.workspaceNotice.classList.toggle(\"error\",!!isError)}else{el.workspaceNotice.hidden=true;el.workspaceNotice.textContent=\"\";el.workspaceNotice.classList.remove(\"error\")}}function clearSyncPoll(){if(syncPollTimer){window.clearTimeout(syncPollTimer);syncPollTimer=null}}function scheduleSyncPoll(delay){clearSyncPoll();syncPollTimer=window.setTimeout(function(){loadData()},delay||1500)}function clearNoticeTimer(){if(noticeTimer){window.clearTimeout(noticeTimer);noticeTimer=null}}function clearAutoSync(){if(autoSyncTimer){window.clearTimeout(autoSyncTimer);autoSyncTimer=null}}function scheduleAutoSync(delay){clearAutoSync();autoSyncTimer=window.setTimeout(function(){if(data.sync_running){scheduleAutoSync(60000);return}refreshNow(true)},typeof delay===\"number\"?delay:AUTO_SYNC_INTERVAL_MS)}function updateSyncNotice(){const message=String(data.sync_message||\"\");if(data.sync_running){dismissedSyncMessage=\"\";clearAutoSync();clearNoticeTimer();setNotice(message||\"Starting sync...\",false);scheduleSyncPoll(1500);return}clearSyncPoll();scheduleAutoSync(AUTO_SYNC_INTERVAL_MS);if(data.sync_error){dismissedSyncMessage=\"\";clearNoticeTimer();setNotice(message,true);return}if(!message){dismissedSyncMessage=\"\";clearNoticeTimer();setNotice(\"\",false);return}if(dismissedSyncMessage===message){setNotice(\"\",false);return}setNotice(message,false);clearNoticeTimer();noticeTimer=window.setTimeout(function(){dismissedSyncMessage=message;setNotice(\"\",false)},4000)}',
 )
 APP_JS = APP_JS.replace(
     'async function loadData(){if(el.syncState)el.syncState.textContent=\"Loading...\";try{const query=buildItemQuery();data=await requestJson(\"/api/items\"+(query?\"?\"+query:\"\"),{method:\"GET\"});render();el.mailboxAddress.textContent=data.mailbox_address||\"Mailbox\";el.lastSync.textContent=data.last_sync_end?\"Last sync: \"+formatLocalTimestamp(data.last_sync_end):\"Last sync: none\";setNotice(data.sync_message||\"\",data.sync_error);if(el.dbPath)el.dbPath.textContent=data.db_path||\"\";if(el.syncState)el.syncState.textContent=\"\"}catch(error){setNotice(\"Workspace load failed: \"+error.message,true);if(el.syncState)el.syncState.textContent=\"Load failed: \"+error.message}}',
-    'async function loadData(){if(el.syncState)el.syncState.textContent=\"Loading...\";try{const query=buildItemQuery();data=await requestJson(\"/api/items\"+(query?\"?\"+query:\"\"),{method:\"GET\"});render();el.mailboxAddress.textContent=data.mailbox_address||\"Mailbox\";el.lastSync.textContent=data.last_sync_end?\"Last sync: \"+formatLocalTimestamp(data.last_sync_end):\"Last sync: none\";updateSyncNotice();if(el.dbPath)el.dbPath.textContent=data.db_path||\"\";if(el.syncState)el.syncState.textContent=\"\"}catch(error){clearSyncPoll();clearNoticeTimer();setNotice(\"Workspace load failed: \"+error.message,true);if(el.syncState)el.syncState.textContent=\"Load failed: \"+error.message}}',
+    'async function loadData(){if(el.syncState)el.syncState.textContent=\"Loading...\";try{const query=buildItemQuery();data=await requestJson(\"/api/items\"+(query?\"?\"+query:\"\"),{method:\"GET\"});render();el.mailboxAddress.textContent=data.mailbox_address||\"Mailbox\";el.lastSync.textContent=data.last_sync_end?\"Last sync: \"+formatLocalTimestamp(data.last_sync_end):\"Last sync: none\";updateSyncNotice();if(el.dbPath)el.dbPath.textContent=data.db_path||\"\";if(el.syncState)el.syncState.textContent=\"\"}catch(error){clearSyncPoll();clearNoticeTimer();scheduleAutoSync(AUTO_SYNC_INTERVAL_MS);setNotice(\"Workspace load failed: \"+error.message,true);if(el.syncState)el.syncState.textContent=\"Load failed: \"+error.message}}',
 )
 APP_JS = APP_JS.replace(
     'async function refreshNow(){setNotice(\"Refreshing from last sync...\",false);if(el.syncState)el.syncState.textContent=\"Refreshing from last sync...\";try{const payload=await requestJson(\"/api/sync\",{method:\"POST\",body:\"{}\"});if(el.syncState)el.syncState.textContent=payload.message||\"Sync complete\";await loadData()}catch(error){setNotice(\"Refresh failed. Open classic Outlook, wait for sync to finish, and try again. Details: \"+error.message,true);if(el.syncState)el.syncState.textContent=\"Refresh failed: \"+error.message}}',
-    'async function refreshNow(){dismissedSyncMessage=\"\";clearNoticeTimer();setNotice(\"Refreshing from last sync...\",false);if(el.syncState)el.syncState.textContent=\"Refreshing from last sync...\";try{const payload=await requestJson(\"/api/sync\",{method:\"POST\",body:\"{}\"});if(el.syncState)el.syncState.textContent=payload.message||\"Sync complete\";await loadData()}catch(error){setNotice(\"Refresh failed. Open classic Outlook, wait for sync to finish, and try again. Details: \"+error.message,true);if(el.syncState)el.syncState.textContent=\"Refresh failed: \"+error.message}}',
+    'async function refreshNow(isAuto){dismissedSyncMessage=\"\";clearAutoSync();clearNoticeTimer();const autoMode=isAuto===true;setNotice(autoMode?\"Automatic refresh from last sync...\":\"Refreshing from last sync...\",false);if(el.syncState)el.syncState.textContent=autoMode?\"Automatic refresh from last sync...\":\"Refreshing from last sync...\";try{const payload=await requestJson(\"/api/sync\",{method:\"POST\",body:\"{}\"});if(el.syncState)el.syncState.textContent=payload.message||\"Sync complete\";await loadData()}catch(error){scheduleAutoSync(AUTO_SYNC_INTERVAL_MS);setNotice(\"Refresh failed. Open classic Outlook, wait for sync to finish, and try again. Details: \"+error.message,true);if(el.syncState)el.syncState.textContent=\"Refresh failed: \"+error.message}}',
 )
 APP_JS = APP_JS.replace(
     'const abstract=document.createElement(\"span\");abstract.textContent=item.abstract||item.body||\"-\";node.append(strong,subject,abstract);',
@@ -300,7 +316,13 @@ class RequestHandler(BaseHTTPRequestHandler):
             if not self._authorized():
                 self._send_json({"error": "Unauthorized"}, status=HTTPStatus.FORBIDDEN)
                 return
-            self._send_json({"text": edit_priority_rules.read_rules_text(), "meta": edit_priority_rules.get_rules_meta()})
+            self._send_json(
+                {
+                    "text": edit_priority_rules.read_rules_text(),
+                    "meta": edit_priority_rules.get_rules_meta(),
+                    "available_models": edit_priority_rules.get_available_models(),
+                }
+            )
             return
         if path == "/api/items":
             if not self._authorized():
@@ -333,7 +355,13 @@ class RequestHandler(BaseHTTPRequestHandler):
                 payload = self._read_json()
                 normalized = json.dumps(payload["rules"], ensure_ascii=False, indent=2) + "\n"
                 meta = edit_priority_rules.write_rules_text(normalized)
-                self._send_json({"text": normalized, "meta": meta})
+                self._send_json(
+                    {
+                        "text": normalized,
+                        "meta": meta,
+                        "available_models": edit_priority_rules.get_available_models(),
+                    }
+                )
             except Exception as exc:
                 self._send_json({"error": str(exc)}, status=HTTPStatus.BAD_REQUEST)
             return
@@ -348,16 +376,17 @@ class RequestHandler(BaseHTTPRequestHandler):
                 self.server.sync_state["running"] = True
                 self.server.sync_state["error"] = False
                 self.server.sync_state["message"] = "Refreshing from last sync..."
-                result = mailhandle_runtime.sync_database(self.server.sync_state["args"])
-                self.server.sync_state["result"] = result
-                self.server.sync_state["message"] = f"{result['mode'].capitalize()} sync stored {result['counts']['stored_count']} new items"
-                self._send_json({"mode": result["mode"], "message": self.server.sync_state["message"], "raw_count": result["counts"]["raw_count"], "stored_count": result["counts"]["stored_count"], "updated_count": result["counts"]["updated_count"]})
+                self.server.sync_state["result"] = {}
+                threading.Thread(
+                    target=mailhandle_runtime.apply_sync,
+                    args=(self.server.sync_state, self.server.sync_state["args"]),
+                    daemon=True,
+                ).start()
+                self._send_json({"started": True, "message": self.server.sync_state["message"]})
             except Exception as exc:
                 self.server.sync_state["error"] = True
                 self.server.sync_state["message"] = mailhandle_runtime.describe_outlook_error(exc)
                 self._send_json({"error": str(exc)}, status=HTTPStatus.BAD_REQUEST)
-            finally:
-                self.server.sync_state["running"] = False
             return
         if path.startswith("/api/item/"):
             if not self._authorized():

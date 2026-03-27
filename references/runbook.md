@@ -194,6 +194,7 @@ To edit `priority_rules.json`:
 Useful fields in `scripts/priority_rules.json`:
 
 - `default_sync_period`
+- `llm_model`
 - `owner_aliases`
 - `manager_senders`
 - `greeting_terms`
@@ -201,6 +202,7 @@ Useful fields in `scripts/priority_rules.json`:
 Notes:
 
 - `default_sync_period` controls the startup sync window and default mailbox UI range filter; supported values are `today`, `last_1day`, `last_2days`, `last_7_days`, `this_month`, and `last_month`
+- `llm_model` controls the shared Codex model for mail abstracts, reply drafts, and new-email drafts; it defaults to `codex-mini-latest` if omitted
 - `manager_senders` can match `Bin Tan`, `Bin.Tan@lumentum.com`, or `Bin Tan <Bin.Tan@lumentum.com>`
 - owner-directed priority is now controlled only by explicit rules and flags; the old `boost_owner_attention` top-level switch has been removed
 - changing `priority_rules.json` is forward-looking; it affects future synced items and does not retroactively rescore historical rows already stored in SQLite

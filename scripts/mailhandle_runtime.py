@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import argparse
 import json
-import os
 import subprocess
 import tempfile
 from datetime import datetime, timedelta
@@ -52,7 +51,20 @@ def build_summary_args(
     )
 
 
-def sync_database(args: argparse.Namespace, *, bootstrap: bool = False) -> dict:
+def _emit_progress(progress_callback, message: str) -> None:
+    if not progress_callback:
+        return
+    progress_callback(str(message or "").strip())
+
+
+def _sync_progress_callback(sync_state: dict):
+    def callback(message: str) -> None:
+        sync_state["message"] = str(message or "").strip()
+
+    return callback
+
+
+def sync_database(args: argparse.Namespace, *, bootstrap: bool = False, progress_callback=None) -> dict:
     query_until = now_iso()
     last_sync_watermark = mailhandle_db.get_last_sync_watermark()
     if bootstrap or not last_sync_watermark:
@@ -61,7 +73,12 @@ def sync_database(args: argparse.Namespace, *, bootstrap: bool = False) -> dict:
     else:
         summary_args = build_summary_args(args, date_preset=None, since=last_sync_watermark, until=query_until)
         mode = "incremental"
-    result = summarize_mail.build_result(summary_args)
+    _emit_progress(
+        progress_callback,
+        "Bootstrap sync: reading Outlook mail..." if mode == "bootstrap" else "Refreshing from last sync...",
+    )
+    result = summarize_mail.build_result(summary_args, progress_callback=progress_callback)
+    _emit_progress(progress_callback, "Writing refreshed mail into the local database...")
     counts = mailhandle_db.upsert_summary(result)
     return {"mode": mode, "result": result, "counts": counts}
 
@@ -71,7 +88,7 @@ def apply_sync(sync_state: dict, args: argparse.Namespace, *, startup: bool = Fa
     sync_state["error"] = False
     sync_state["message"] = "Starting sync..." if startup else "Refreshing from last sync..."
     try:
-        result = sync_database(args)
+        result = sync_database(args, progress_callback=_sync_progress_callback(sync_state))
         sync_state["result"] = result
         sync_state["message"] = f"{result['mode'].capitalize()} sync stored {result['counts']['stored_count']} new items"
     except Exception as exc:
@@ -184,7 +201,7 @@ def _mail_owner_name() -> str:
 
 
 def _response_model_name() -> str:
-    return os.getenv("MAILHANDLE_RESPONSE_MODEL", "").strip() or os.getenv("MAILHANDLE_ABSTRACT_MODEL", "").strip()
+    return summarize_mail.get_llm_model()
 
 
 def _run_structured_codex(prompt: str, *, schema: dict, temp_prefix: str) -> dict:

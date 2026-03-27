@@ -12,6 +12,8 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 RULES_FILE = PROJECT_ROOT / "scripts" / "priority_rules.json"
+MODELS_CACHE_FILE = Path.home() / ".codex" / "models_cache.json"
+DEFAULT_LLM_MODEL = "codex-mini-latest"
 
 HTML_PAGE = """<!DOCTYPE html>
 <html lang="en">
@@ -434,6 +436,11 @@ HTML_PAGE = """<!DOCTYPE html>
               <div class="hint">Used as the startup sync window and the initial mailbox time-range filter.</div>
             </div>
             <div class="field">
+              <label for="llmModel">LLM model</label>
+              <select id="llmModel"></select>
+              <div class="hint">Used for mail abstracts and reply or new-email drafting. The dropdown comes from the local Codex model cache and falls back to <code>codex-mini-latest</code>.</div>
+            </div>
+            <div class="field">
               <label for="defaultPriority">Default priority</label>
               <select id="defaultPriority">
                 <option value="high">high</option>
@@ -577,9 +584,11 @@ HTML_PAGE = """<!DOCTYPE html>
     const emptyRulesEl = document.getElementById("emptyRules");
     const jsonPreviewEl = document.getElementById("jsonPreview");
     const ruleTemplate = document.getElementById("ruleTemplate");
+    let availableModels = [];
 
     const form = {
       defaultSyncPeriod: document.getElementById("defaultSyncPeriod"),
+      llmModel: document.getElementById("llmModel"),
       defaultPriority: document.getElementById("defaultPriority"),
       ownerAliases: document.getElementById("ownerAliases"),
       managerSenders: document.getElementById("managerSenders"),
@@ -649,6 +658,35 @@ HTML_PAGE = """<!DOCTYPE html>
       return (values || []).join("\\n");
     }
 
+    function normalizeModelList(values) {
+      const seen = new Set();
+      return (values || [])
+        .map((value) => String(value || "").trim())
+        .filter((value) => {
+          if (!value || seen.has(value)) {
+            return false;
+          }
+          seen.add(value);
+          return true;
+        });
+    }
+
+    function renderModelOptions(models, selectedValue) {
+      const normalizedModels = normalizeModelList(models);
+      const selected = String(selectedValue || "codex-mini-latest").trim() || "codex-mini-latest";
+      const options = normalizedModels.includes(selected) ? normalizedModels : [selected, ...normalizedModels];
+      form.llmModel.replaceChildren();
+      options.forEach((value, index) => {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = index === 0 && value === selected && !normalizedModels.includes(selected)
+          ? value + " (current)"
+          : value;
+        form.llmModel.appendChild(option);
+      });
+      form.llmModel.value = selected;
+    }
+
     function defaultRule() {
       return {
         name: "",
@@ -656,8 +694,9 @@ HTML_PAGE = """<!DOCTYPE html>
       };
     }
 
-    function fillForm(rulesConfig) {
+    function fillForm(rulesConfig, models) {
       form.defaultSyncPeriod.value = rulesConfig.default_sync_period || "last_1day";
+      renderModelOptions(models, rulesConfig.llm_model || "codex-mini-latest");
       form.defaultPriority.value = rulesConfig.default_priority || "low";
       form.ownerAliases.value = joinLines(rulesConfig.owner_aliases || []);
       form.managerSenders.value = joinLines(rulesConfig.manager_senders || []);
@@ -673,6 +712,7 @@ HTML_PAGE = """<!DOCTYPE html>
     function readForm() {
       return {
         default_sync_period: form.defaultSyncPeriod.value,
+        llm_model: (form.llmModel.value || "").trim() || "codex-mini-latest",
         default_priority: form.defaultPriority.value,
         suppress_low_priority_notifications: form.suppressNotifications.checked,
         collapse_similar_emails: form.collapseSimilar.checked,
@@ -804,7 +844,8 @@ HTML_PAGE = """<!DOCTYPE html>
       setStatus("Loading rules...", "");
       const response = await fetch("/api/rules");
       const payload = await response.json();
-      fillForm(JSON.parse(payload.text));
+      availableModels = normalizeModelList(payload.available_models || []);
+      fillForm(JSON.parse(payload.text), availableModels);
       renderMeta(payload.meta || {});
       setStatus("Rules loaded.", "good");
     }
@@ -830,7 +871,8 @@ HTML_PAGE = """<!DOCTYPE html>
         return;
       }
 
-      fillForm(JSON.parse(payload.text));
+      availableModels = normalizeModelList(payload.available_models || availableModels);
+      fillForm(JSON.parse(payload.text), availableModels);
       renderMeta(payload.meta || {});
       setStatus("Saved back to priority_rules.json.", "good");
       if (closeAfterSave) {
@@ -889,6 +931,32 @@ def write_rules_text(text: str) -> dict:
     return get_rules_meta()
 
 
+def get_available_models() -> list[str]:
+    items: list[str] = []
+    if MODELS_CACHE_FILE.exists():
+        try:
+            payload = json.loads(MODELS_CACHE_FILE.read_text(encoding="utf-8"))
+            for model in payload.get("models", []):
+                slug = str(model.get("slug") or "").strip()
+                visibility = str(model.get("visibility") or "").strip().lower()
+                if slug and visibility in {"", "list"}:
+                    items.append(slug)
+        except Exception:
+            items = []
+
+    if DEFAULT_LLM_MODEL not in items:
+        items.insert(0, DEFAULT_LLM_MODEL)
+
+    deduped: list[str] = []
+    seen: set[str] = set()
+    for value in items:
+        if value in seen:
+            continue
+        seen.add(value)
+        deduped.append(value)
+    return deduped
+
+
 def make_handler(stop_server: threading.Event):
     class Handler(BaseHTTPRequestHandler):
         def _send_json(self, payload: dict, status: int = HTTPStatus.OK) -> None:
@@ -912,7 +980,13 @@ def make_handler(stop_server: threading.Event):
                 self._send_html(HTML_PAGE)
                 return
             if self.path == "/api/rules":
-                self._send_json({"text": read_rules_text(), "meta": get_rules_meta()})
+                self._send_json(
+                    {
+                        "text": read_rules_text(),
+                        "meta": get_rules_meta(),
+                        "available_models": get_available_models(),
+                    }
+                )
                 return
             self._send_json({"error": "Not found"}, status=HTTPStatus.NOT_FOUND)
 
@@ -930,7 +1004,13 @@ def make_handler(stop_server: threading.Event):
                 meta = write_rules_text(normalized_text)
                 if payload.get("close_after_save"):
                     stop_server.set()
-                self._send_json({"text": normalized_text, "meta": meta})
+                self._send_json(
+                    {
+                        "text": normalized_text,
+                        "meta": meta,
+                        "available_models": get_available_models(),
+                    }
+                )
             except Exception as exc:
                 self._send_json({"error": str(exc)}, status=HTTPStatus.BAD_REQUEST)
 
