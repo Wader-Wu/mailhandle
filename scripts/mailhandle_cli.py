@@ -335,7 +335,7 @@ def command_overview(args: argparse.Namespace) -> int:
         try:
             sync_result = mailhandle_runtime.sync_database(args, bootstrap=args.bootstrap)
         except Exception as exc:
-            sync_error = mailhandle_runtime.describe_outlook_error(exc)
+            sync_error = mailhandle_runtime.describe_sync_error(exc)
     filters = _build_view_filters(args)
     items = mailhandle_db.load_items(filters)
     groups = mailhandle_db.group_items(items)
@@ -369,7 +369,7 @@ def command_sync(args: argparse.Namespace) -> int:
     try:
         result = mailhandle_runtime.sync_database(args, bootstrap=args.bootstrap)
     except Exception as exc:
-        sync_error = mailhandle_runtime.describe_outlook_error(exc)
+        sync_error = mailhandle_runtime.describe_sync_error(exc)
         if args.json:
             print(
                 json.dumps(

@@ -14,7 +14,9 @@ DEFAULT_SENT_PRIORITY = "medium"
 DEFAULT_SENT_STATUS = "doing"
 DATE_PRESET_CHOICES = ["today", "yesterday", "last_1day", "last_2days", "last_7_days", "this_month", "last_month"]
 DEFAULT_SYNC_PERIOD = "last_1day"
-DEFAULT_LLM_MODEL = "codex-mini-latest"
+DEFAULT_LLM_MODEL = "gpt-5.4-mini"
+DEFAULT_LLM_FAILURE_MODE = "abort"
+LLM_FAILURE_MODE_CHOICES = {"abort", "local_fallback"}
 PROJECT_KEYWORDS = {
     "zhuque": ["zhuque"],
     "nokia": ["nokia"],
@@ -26,6 +28,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEV_ENV_FILE = PROJECT_ROOT / ".env"
 RUNTIME_ENV_FILE = PROJECT_ROOT / "scripts" / ".env"
 RULES_FILE = PROJECT_ROOT / "scripts" / "priority_rules.json"
+MODELS_CACHE_FILE = Path.home() / ".codex" / "models_cache.json"
 ABSTRACT_CACHE_FILE = PROJECT_ROOT / ".cache" / "mailhandle_abstracts.json"
 ABSTRACT_CACHE_VERSION = 2
 ABSTRACT_BODY_LIMIT = 1800
@@ -51,6 +54,19 @@ def load_env_file(path: Path) -> None:
 
 def load_runtime_env() -> None:
     load_env_file(DEV_ENV_FILE if DEV_ENV_FILE.exists() else RUNTIME_ENV_FILE)
+
+
+def build_codex_env() -> dict[str, str]:
+    env = os.environ.copy()
+    blocked_targets = {"127.0.0.1:9", "localhost:9"}
+    for key in ["HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "http_proxy", "https_proxy", "all_proxy"]:
+        value = str(env.get(key) or "").strip()
+        if not value:
+            continue
+        normalized = value.lower()
+        if any(target in normalized for target in blocked_targets):
+            env.pop(key, None)
+    return env
 
 
 def emit_progress(progress_callback, message: str) -> None:
@@ -92,7 +108,57 @@ def normalize_date_preset(value: str) -> str:
 
 
 def normalize_llm_model(value: str) -> str:
-    return str(value or "").strip() or DEFAULT_LLM_MODEL
+    text = str(value or "").strip()
+    available_models = get_available_models()
+    if text and (not available_models or text in available_models):
+        return text
+    return get_default_llm_model(available_models)
+
+
+def get_available_models() -> list[str]:
+    items: list[str] = []
+    if MODELS_CACHE_FILE.exists():
+        try:
+            payload = json.loads(MODELS_CACHE_FILE.read_text(encoding="utf-8"))
+            for model in payload.get("models", []):
+                slug = str(model.get("slug") or "").strip()
+                visibility = str(model.get("visibility") or "").strip().lower()
+                if slug and visibility in {"", "list"}:
+                    items.append(slug)
+        except Exception:
+            items = []
+    deduped: list[str] = []
+    seen: set[str] = set()
+    for value in items:
+        if value in seen:
+            continue
+        seen.add(value)
+        deduped.append(value)
+    return deduped
+
+
+def get_default_llm_model(available_models: list[str] | None = None) -> str:
+    items = list(available_models or get_available_models())
+    if not items:
+        return DEFAULT_LLM_MODEL
+    preferred = [
+        "gpt-5.4-mini",
+        "gpt-5.4",
+        "gpt-5-codex-mini",
+        "gpt-5-codex",
+        DEFAULT_LLM_MODEL,
+    ]
+    for value in preferred:
+        if value in items:
+            return value
+    return items[0]
+
+
+def normalize_llm_failure_mode(value: str) -> str:
+    text = str(value or "").strip().lower()
+    if text in LLM_FAILURE_MODE_CHOICES:
+        return text
+    return DEFAULT_LLM_FAILURE_MODE
 
 
 def get_default_sync_period() -> str:
@@ -110,6 +176,52 @@ def get_llm_model(rules_config: dict | None = None) -> str:
         except Exception:
             rules_config = {}
     return normalize_llm_model(str(rules_config.get("llm_model") or ""))
+
+
+def get_llm_failure_mode(rules_config: dict | None = None) -> str:
+    if rules_config is None:
+        try:
+            rules_config = load_priority_rules()
+        except Exception:
+            rules_config = {}
+    return normalize_llm_failure_mode(str(rules_config.get("llm_failure_mode") or ""))
+
+
+def get_llm_status(rules_config: dict | None = None, *, last_error: str = "") -> dict[str, object]:
+    if rules_config is None:
+        try:
+            rules_config = load_priority_rules()
+        except Exception:
+            rules_config = {}
+    failure_mode = get_llm_failure_mode(rules_config)
+    model_name = get_llm_model(rules_config)
+    codex_command = get_codex_command()
+    available = bool(codex_command)
+    message = ""
+    error = False
+    if last_error:
+        error = True
+        message = str(last_error).strip()
+    elif not available:
+        error = True
+        if failure_mode == "local_fallback":
+            message = (
+                "LLM interface is unavailable. Mailhandle will keep syncing with local abstracts, "
+                "but reply and new-email drafting will stay unavailable until Codex CLI works again."
+            )
+        else:
+            message = (
+                "LLM interface is unavailable. Current failure mode is abort, so sync-time abstract generation "
+                "and drafting will fail until Codex CLI works again."
+            )
+    return {
+        "available": available,
+        "configured": True,
+        "failure_mode": failure_mode,
+        "model": model_name,
+        "error": error,
+        "message": message,
+    }
 
 
 def get_mail_owner() -> dict[str, str]:
@@ -868,6 +980,7 @@ def request_llm_abstract(email_payload: dict, *, model_name: str) -> str:
             capture_output=True,
             text=True,
             encoding="utf-8",
+            env=build_codex_env(),
             timeout=120,
         )
         _ = completed
@@ -876,12 +989,19 @@ def request_llm_abstract(email_payload: dict, *, model_name: str) -> str:
     return sanitize_abstract_text(payload.get("abstract", ""))
 
 
-def generate_llm_abstracts(messages: list[dict], *, model_name: str, progress_callback=None) -> dict[str, str]:
+def generate_llm_abstracts(
+    messages: list[dict],
+    *,
+    model_name: str,
+    failure_mode: str,
+    progress_callback=None,
+) -> tuple[dict[str, str], str]:
     cache = load_abstract_cache()
     abstracts: dict[str, str] = {}
     cache_changed = False
     pending: list[tuple[dict, dict]] = []
     cached_count = 0
+    llm_error = ""
 
     for message in messages:
         message_id = str(message.get("id") or "")
@@ -902,14 +1022,17 @@ def generate_llm_abstracts(messages: list[dict], *, model_name: str, progress_ca
     if total == 0:
         if cached_count:
             emit_progress(progress_callback, f"Abstracts already cached for {cached_count} messages. Applying local rules...")
-        return abstracts
+        return abstracts, llm_error
 
     if not get_codex_command():
+        llm_error = "Codex CLI is not available for abstract generation."
+        if failure_mode == "abort":
+            raise RuntimeError(llm_error)
         emit_progress(
             progress_callback,
             f"Skipping {total} LLM abstracts because Codex CLI is not available. Applying local rules...",
         )
-        return abstracts
+        return abstracts, llm_error
 
     preface = f"Generating {total} new LLM abstracts with {model_name}"
     if cached_count:
@@ -920,12 +1043,15 @@ def generate_llm_abstracts(messages: list[dict], *, model_name: str, progress_ca
         emit_progress(progress_callback, f"Generating LLM abstracts {index}/{total} with {model_name}...")
         try:
             abstract = request_llm_abstract(payload, model_name=model_name)
-        except Exception:
+        except Exception as exc:
+            llm_error = f"LLM abstract generation failed: {str(exc).strip() or exc.__class__.__name__}"
+            if failure_mode == "abort":
+                raise RuntimeError(llm_error) from exc
             emit_progress(
                 progress_callback,
                 f"LLM abstract generation stopped at {index - 1}/{total}. Continuing with available results...",
             )
-            return abstracts
+            return abstracts, llm_error
         if not abstract:
             continue
         message_id = str(message.get("id") or "")
@@ -936,7 +1062,7 @@ def generate_llm_abstracts(messages: list[dict], *, model_name: str, progress_ca
     if cache_changed:
         save_abstract_cache(cache)
     emit_progress(progress_callback, "Finished generating LLM abstracts. Applying local rules...")
-    return abstracts
+    return abstracts, llm_error
 
 
 def build_abstract(
@@ -1290,9 +1416,11 @@ def build_result(args: argparse.Namespace, progress_callback=None) -> dict:
     rules_config = load_priority_rules()
     owner = get_mail_owner()
     llm_model = get_llm_model(rules_config)
-    llm_abstracts = generate_llm_abstracts(
+    llm_failure_mode = get_llm_failure_mode(rules_config)
+    llm_abstracts, llm_error = generate_llm_abstracts(
         mail_payload.get("messages", []) + sent_messages,
         model_name=llm_model,
+        failure_mode=llm_failure_mode,
         progress_callback=progress_callback,
     )
     emit_progress(progress_callback, "Applying local priority rules and grouping mail...")
@@ -1331,6 +1459,7 @@ def build_result(args: argparse.Namespace, progress_callback=None) -> dict:
         "count": len(todos),
         "stats": build_stats(todos),
         "todos": [finalize_todo(todo, args.verbose) for todo in todos],
+        "llm_status": get_llm_status(rules_config, last_error=llm_error),
     }
 
 

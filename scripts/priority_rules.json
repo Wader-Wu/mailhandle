@@ -1,6 +1,7 @@
 {
   "default_sync_period": "last_2days",
-  "llm_model": "codex-mini-latest",
+  "llm_model": "gpt-5.4-mini",
+  "llm_failure_mode": "abort",
   "default_priority": "low",
   "suppress_low_priority_notifications": true,
   "collapse_similar_emails": true,

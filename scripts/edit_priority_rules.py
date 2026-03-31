@@ -13,7 +13,7 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 RULES_FILE = PROJECT_ROOT / "scripts" / "priority_rules.json"
 MODELS_CACHE_FILE = Path.home() / ".codex" / "models_cache.json"
-DEFAULT_LLM_MODEL = "codex-mini-latest"
+DEFAULT_LLM_MODEL = "gpt-5.4-mini"
 
 HTML_PAGE = """<!DOCTYPE html>
 <html lang="en">
@@ -438,7 +438,15 @@ HTML_PAGE = """<!DOCTYPE html>
             <div class="field">
               <label for="llmModel">LLM model</label>
               <select id="llmModel"></select>
-              <div class="hint">Used for mail abstracts and reply or new-email drafting. The dropdown comes from the local Codex model cache and falls back to <code>codex-mini-latest</code>.</div>
+              <div class="hint">Used for mail abstracts and reply or new-email drafting. The dropdown comes from the local Codex model cache and falls back to a supported local default such as <code>gpt-5.4-mini</code>.</div>
+            </div>
+            <div class="field">
+              <label for="llmFailureMode">LLM failure mode</label>
+              <select id="llmFailureMode">
+                <option value="abort">abort</option>
+                <option value="local_fallback">local_fallback</option>
+              </select>
+              <div class="hint">Controls sync-time behavior when the LLM interface is unavailable. <code>abort</code> stops with an error. <code>local_fallback</code> keeps local abstract generation, but drafting still needs Codex CLI.</div>
             </div>
             <div class="field">
               <label for="defaultPriority">Default priority</label>
@@ -589,6 +597,7 @@ HTML_PAGE = """<!DOCTYPE html>
     const form = {
       defaultSyncPeriod: document.getElementById("defaultSyncPeriod"),
       llmModel: document.getElementById("llmModel"),
+      llmFailureMode: document.getElementById("llmFailureMode"),
       defaultPriority: document.getElementById("defaultPriority"),
       ownerAliases: document.getElementById("ownerAliases"),
       managerSenders: document.getElementById("managerSenders"),
@@ -673,7 +682,7 @@ HTML_PAGE = """<!DOCTYPE html>
 
     function renderModelOptions(models, selectedValue) {
       const normalizedModels = normalizeModelList(models);
-      const selected = String(selectedValue || "codex-mini-latest").trim() || "codex-mini-latest";
+      const selected = String(selectedValue || "gpt-5.4-mini").trim() || "gpt-5.4-mini";
       const options = normalizedModels.includes(selected) ? normalizedModels : [selected, ...normalizedModels];
       form.llmModel.replaceChildren();
       options.forEach((value, index) => {
@@ -696,7 +705,8 @@ HTML_PAGE = """<!DOCTYPE html>
 
     function fillForm(rulesConfig, models) {
       form.defaultSyncPeriod.value = rulesConfig.default_sync_period || "last_1day";
-      renderModelOptions(models, rulesConfig.llm_model || "codex-mini-latest");
+      renderModelOptions(models, rulesConfig.llm_model || "gpt-5.4-mini");
+      form.llmFailureMode.value = rulesConfig.llm_failure_mode || "abort";
       form.defaultPriority.value = rulesConfig.default_priority || "low";
       form.ownerAliases.value = joinLines(rulesConfig.owner_aliases || []);
       form.managerSenders.value = joinLines(rulesConfig.manager_senders || []);
@@ -712,7 +722,8 @@ HTML_PAGE = """<!DOCTYPE html>
     function readForm() {
       return {
         default_sync_period: form.defaultSyncPeriod.value,
-        llm_model: (form.llmModel.value || "").trim() || "codex-mini-latest",
+        llm_model: (form.llmModel.value || "").trim() || "gpt-5.4-mini",
+        llm_failure_mode: (form.llmFailureMode.value || "").trim() || "abort",
         default_priority: form.defaultPriority.value,
         suppress_low_priority_notifications: form.suppressNotifications.checked,
         collapse_similar_emails: form.collapseSimilar.checked,
@@ -944,8 +955,12 @@ def get_available_models() -> list[str]:
         except Exception:
             items = []
 
-    if DEFAULT_LLM_MODEL not in items:
-        items.insert(0, DEFAULT_LLM_MODEL)
+    if DEFAULT_LLM_MODEL in items:
+        items = [DEFAULT_LLM_MODEL, *[value for value in items if value != DEFAULT_LLM_MODEL]]
+    elif items:
+        pass
+    else:
+        items = [DEFAULT_LLM_MODEL]
 
     deduped: list[str] = []
     seen: set[str] = set()

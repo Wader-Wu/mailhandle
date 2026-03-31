@@ -12,7 +12,7 @@ Major features:
 - lets you filter by time range, priority, and status
 - lets you open the original Outlook item directly
 - lets you mark status and keep that review state locally
-- supports rule-based priority tuning and LLM model selection from `scripts\priority_rules.json`
+- supports rule-based priority tuning, LLM model selection, and configurable LLM failure handling from `scripts\priority_rules.json`
 - can generate abstracts, replies, and new emails when Codex CLI is installed
 
 Safety:
@@ -163,15 +163,17 @@ Useful commands:
 - `new-email-draft`: generate a new email draft JSON
 - `new-email-open`: open a new Outlook email, optionally with a prepared draft
 
-In CLI mode, edit `scripts\priority_rules.json` manually when you want to change rule behavior or the shared `llm_model` used for abstracts and drafts.
+In CLI mode, edit `scripts\priority_rules.json` manually when you want to change rule behavior or the shared `llm_model` and `llm_failure_mode` used for abstracts and drafts.
 
 Drafting notes:
 
 - `reply-draft` and `new-email-draft` require Codex CLI to be installed and logged in
-- the LLM model for abstracts and drafts comes from `scripts\priority_rules.json` under `llm_model` and defaults to `codex-mini-latest`
+- the LLM model for abstracts and drafts comes from `scripts\priority_rules.json` under `llm_model` and defaults to a supported local model such as `gpt-5.4-mini`
+- `llm_failure_mode` controls what happens when abstract generation cannot reach Codex CLI; it defaults to `abort`, and `local_fallback` keeps sync running with local abstracts
 - in GUI mode, the draft dialog supports a `second language` selector for `Thailand` and `Chinese`
 - in CLI mode, request any second-language output in your notes text or notes file
 - generated replies and new emails automatically append `Powered by Codex`
+- the GUI shows a persistent warning banner whenever the LLM interface is unavailable or the last sync hit an LLM failure
 
 Advanced docs:
 

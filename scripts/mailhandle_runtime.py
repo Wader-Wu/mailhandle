@@ -93,7 +93,7 @@ def apply_sync(sync_state: dict, args: argparse.Namespace, *, startup: bool = Fa
         sync_state["message"] = f"{result['mode'].capitalize()} sync stored {result['counts']['stored_count']} new items"
     except Exception as exc:
         sync_state["error"] = True
-        sync_state["message"] = describe_outlook_error(exc)
+        sync_state["message"] = describe_sync_error(exc)
     finally:
         sync_state["running"] = False
 
@@ -133,6 +133,23 @@ def describe_outlook_error(exc: Exception) -> str:
     )
 
 
+def describe_sync_error(exc: Exception) -> str:
+    details = str(exc).strip() or exc.__class__.__name__
+    if "Codex CLI" in details or "LLM" in details:
+        return details
+    return describe_outlook_error(exc)
+
+
+def get_llm_view_status(sync_state: dict | None = None) -> dict[str, object]:
+    sync_state = sync_state or {}
+    result = sync_state.get("result", {})
+    summary = result.get("result", {}) if isinstance(result, dict) else {}
+    llm_status = summary.get("llm_status")
+    if isinstance(llm_status, dict):
+        return llm_status
+    return summarize_mail.get_llm_status()
+
+
 def view_payload(filters: dict[str, str], sync_state: dict | None = None) -> dict:
     items = mailhandle_db.load_items(filters)
     try:
@@ -150,6 +167,7 @@ def view_payload(filters: dict[str, str], sync_state: dict | None = None) -> dic
         "sync_message": str(sync_state.get("message") or ""),
         "sync_error": bool(sync_state.get("error", False)),
         "sync_running": bool(sync_state.get("running", False)),
+        "llm_status": get_llm_view_status(sync_state),
     }
 
 
@@ -204,6 +222,22 @@ def _response_model_name() -> str:
     return summarize_mail.get_llm_model()
 
 
+def _extract_subprocess_error(exc: subprocess.CalledProcessError, *, default: str) -> str:
+    stderr = str(exc.stderr or "").strip()
+    stdout = str(exc.stdout or "").strip()
+    for text in [stderr, stdout]:
+        if not text:
+            continue
+        lines = [line.strip() for line in text.splitlines() if line.strip()]
+        if not lines:
+            continue
+        for line in reversed(lines):
+            if line.startswith("ERROR:"):
+                return line
+        return lines[-1]
+    return default
+
+
 def _run_structured_codex(prompt: str, *, schema: dict, temp_prefix: str) -> dict:
     codex_command = summarize_mail.get_codex_command()
     if not codex_command:
@@ -234,7 +268,20 @@ def _run_structured_codex(prompt: str, *, schema: dict, temp_prefix: str) -> dic
         model_name = _response_model_name()
         if model_name:
             command[2:2] = ["-m", model_name]
-        subprocess.run(command, input=prompt, check=True, capture_output=True, text=True, encoding="utf-8", timeout=180)
+        try:
+            subprocess.run(
+                command,
+                input=prompt,
+                check=True,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                env=summarize_mail.build_codex_env(),
+                timeout=180,
+            )
+        except subprocess.CalledProcessError as exc:
+            details = _extract_subprocess_error(exc, default="Codex draft generation failed.")
+            raise RuntimeError(details) from exc
         return json.loads(output_path.read_text(encoding="utf-8"))
 
 
@@ -270,7 +317,8 @@ def _build_group_reply_payload(group_context: dict, notes: str) -> dict:
 def request_llm_group_reply(group_context: dict, notes: str) -> str:
     codex_command = summarize_mail.get_codex_command()
     if not codex_command:
-        raise RuntimeError("Codex CLI is not available for response generation.")
+        status = summarize_mail.get_llm_status()
+        raise RuntimeError(str(status.get("message") or "Codex CLI is not available for response generation."))
     owner_name = _mail_owner_name()
     payload = _build_group_reply_payload(group_context, notes)
     prompt = (
@@ -282,11 +330,12 @@ def request_llm_group_reply(group_context: dict, notes: str) -> str:
         "- Use a structured reply format with these fields only: subject, greeting, body_en, body_local, local_language, closing.\n"
         "- subject is a concise reply subject line.\n"
         "- greeting is the salutation only.\n"
-        "- body_en is the English reply body only and must not repeat the greeting or closing.\n"
+        "- body_en is the main English reply body and must not repeat the greeting or closing.\n"
         "- body_local is an optional second-language reply body only and must not repeat the greeting or closing.\n"
         "- local_language is the language code for body_local, like th, ja, de, zh. If the user asks for a Thailand/Thai version, use th.\n"
         "- closing is a closing-only block and must include the sender name.\n"
-        "- If no second language is requested, return body_local as an empty string and local_language as an empty string.\n"
+        "- Always return the main draft in English in body_en, even if the user's notes are written in another language.\n"
+        "- Only return body_local and local_language when the user explicitly requests a second-language version.\n"
         "- Return JSON only.\n\n"
         f"{json.dumps(payload, ensure_ascii=False)}\n"
     )
@@ -315,7 +364,8 @@ def request_llm_group_reply(group_context: dict, notes: str) -> str:
 def request_llm_new_email(notes: str) -> str:
     codex_command = summarize_mail.get_codex_command()
     if not codex_command:
-        raise RuntimeError("Codex CLI is not available for new email generation.")
+        status = summarize_mail.get_llm_status()
+        raise RuntimeError(str(status.get("message") or "Codex CLI is not available for new email generation."))
     owner_name = _mail_owner_name()
     payload = {"user_notes": notes}
     prompt = (
@@ -325,11 +375,12 @@ def request_llm_new_email(notes: str) -> str:
         "- Use a structured reply format with these fields only: subject, greeting, body_en, body_local, local_language, closing.\n"
         "- subject is a concise email subject line.\n"
         "- greeting is the salutation only.\n"
-        "- body_en is the English email body only and must not repeat the greeting or closing.\n"
+        "- body_en is the main English email body and must not repeat the greeting or closing.\n"
         "- body_local is an optional second-language email body only and must not repeat the greeting or closing.\n"
         "- local_language is the language code for body_local, like th, ja, de, zh. If the user asks for a Thailand/Thai version, use th.\n"
         "- closing is a closing-only block and must include the sender name.\n"
-        "- If no second language is requested, return body_local as an empty string and local_language as an empty string.\n"
+        "- Always return the main draft in English in body_en, even if the user's notes are written in another language.\n"
+        "- Only return body_local and local_language when the user explicitly requests a second-language version.\n"
         "- Return JSON only.\n\n"
         f"{json.dumps(payload, ensure_ascii=False)}\n"
     )
